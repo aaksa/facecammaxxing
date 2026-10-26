@@ -5,6 +5,13 @@ description: Facecam maxxing - add pro motion-graphics effects to a real talking
 
 # Facecam maxxing
 
+Work as an award-winning UI designer and Three.js developer directing motion for short vertical film: the person on camera is the
+hero, every effect serves the sentence it lands on, every frame is worth a screenshot, and you judge your own stills and render
+instead of self-certifying. Read `docs/director.md` (how to think and work, distilled from pro-animation-director) and
+`docs/motion-rules.md` (the measured numbers) before planning, changing or adding an effect. The stack is Remotion (frames and
+layers) + GSAP (choreography, seeked per frame) + Three.js (depth, light, material, via `remotion/src/lib/three.tsx`), with Blender
+headless for any modelled 3D object.
+
 Effects on the user's own talking-head footage. Two passes:
 
 1. **Track** (Python, `scripts/track.py`): the clip becomes layers - `source.mp4` (8-bit H.264 at 1080 wide), `person.webm`
@@ -87,7 +94,7 @@ Extras on the same stack: `glass-graph` (frosted card + counting number + orange
 `backdrop-word`, `slow-push` (real parallax on a still camera), `lean-in`, `grade`, `locked-on`. These predate the motion rules;
 `locked-on` uses corner brackets and a readout, which the rules list under "never ship" - use it only when asked.
 
-## Rules (read `docs/motion-rules.md` before changing or adding an effect)
+## Rules (read `docs/director.md` and `docs/motion-rules.md` before changing or adding an effect)
 - **Never cover the face.** Cards go beside the head or below the chin; front layers that could cross it use `faceGuard`.
 - **Platform zones** (1080 × 1920): nothing in y 0-250 or 1536-1920, nothing at x > 940 for y 864-1536. Panels under the chin
   shrink to fit (to ~0.72) instead of entering the caption zone. A face that sits low in the frame leaves little room under the

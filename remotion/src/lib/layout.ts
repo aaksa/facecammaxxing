@@ -12,7 +12,7 @@ export const rightEdge = (c: FxCtx, y0: number, y1: number) => { const z = zones
 export const chin = (c: FxCtx) => c.face.y + c.face.w * 0.62;
 /** The band under the chin and above the caption zone, where chest-height panels live. */
 export const band = (c: FxCtx) => { const top = chin(c) + px(c, 22); return { top, h: zones(c).bottom - px(c, 14) - top }; };
-export const px = (c: FxCtx, v: number) => (v * c.W) / 1080;          // the guide's sizes are for 1080 wide
+export const px = (c: FxCtx, v: number) => (v * c.W) / 1080;          // sizes are written for 1080 wide
 export const ORANGE = '#D97757';                                       // the one accent colour: the win
 
 /** Smoked glass, the one material every card in the set shares. */

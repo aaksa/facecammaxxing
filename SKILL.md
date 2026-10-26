@@ -1,6 +1,6 @@
 ---
 name: facecammaxxing
-description: Facecam maxxing - add pro motion-graphics effects to a real talking-head clip (a facecam / selfie / phone video of the user talking), rendered with Remotion + GSAP + Three.js (and headless Blender for modelled 3D props) over a clean cut-out of the person, directed with an award-level reel director's workflow (brief, one idea per sentence, a beat plan where every effect says what it makes the viewer believe, hardest beat first, measured self-review). The six core effects (from the "6 video editing effects you can make with Claude" guide) are over-the-shoulder (camera pushes over each shoulder to Before / After proof cards behind the head, with motion blur), kallaway-split (the clip drops into a card on grid paper and the creator's numbers rise out of its top edge as a skyline that peaks behind their head), freeze-frame (shot freezes, room greys, white sticker outline + name tag), tier-list (S-D tier list builds under the chin), text-behind (a huge word rises from behind the head) and color-grade (flat LOG look wiped into a cinematic grade with Before / After). 3D props from Blender - prop-3d (a trophy, a clock whose hands sweep the hours, a coin, a phone showing the real screen, a check, an X, or any GLB you model) lands beside the head, lit like the room. Extras - glass-graph, a 3D carousel / orbit of reels, glass widgets, spotlight, backdrop word, slow parallax push, punch-in, locked-on, grade. Hook effects from two studied reels - kinetic-caption (word-by-word captions in two type faces, editorial or podcast style, top words tucked behind the head), window-cards (retro desktop windows of your reels that a cursor clicks), name-tag (lower third), silhouette-intro, bottom-fade; the punch-in (lean-in) snaps in with motion blur and depth of field, and captions leave by dropping out or blowing past the camera. Effects track the face, sit behind or in front of the person, never cover the face, keep out of the Reels UI zones and follow measured motion rules. Use when the user says facecam maxxing / facecammaxxing, gives a talking-head clip and asks for an effect, names one of the effects, asks for "text behind my head", "cards behind me", kinetic / word-by-word captions, a lower-third name tag, retro window cards, a silhouette intro, a Kallaway split / split-screen chart, a freeze frame, a tier list, a before/after grade, a 3D object / prop / trophy / Blender model next to them, or wants the Claude-edit style effects on their own footage.
+description: Facecam maxxing - add pro motion-graphics effects to a real talking-head clip (a facecam / selfie / phone video of the user talking), rendered with Remotion + GSAP + Three.js (and headless Blender for modelled 3D props) over a clean cut-out of the person, directed with an award-level reel director's workflow (brief, one idea per sentence, a beat plan where every effect says what it makes the viewer believe, hardest beat first, measured self-review). It is a library of 22 effects, all equal, grouped by the job they do: proof and numbers - over-the-shoulder (camera pushes over each shoulder to Before / After proof cards behind the head, with motion blur), kallaway-split (the clip drops into a card on grid paper and the creator's numbers rise out of its top edge as a skyline that peaks behind their head), glass-graph, glass-widgets, tier-list (S-D tier list builds under the chin); type and captions - text-behind (a huge word rises from behind the head), backdrop-word, kinetic-caption (word-by-word captions in two type faces, editorial or podcast style, top words tucked behind the head); camera, light and look - lean-in (punch-in with motion blur and depth of field), slow-push, spotlight, color-grade (flat LOG look wiped into a cinematic grade with Before / After), grade, locked-on; 3D and depth - prop-3d (a Blender-modelled trophy, a clock whose hands sweep the hours, a coin, a phone showing the real screen, a check, an X, or any GLB, lit like the room), carousel-spin and orbit of reels; people, openers and framing - freeze-frame (shot freezes, room greys, white sticker outline + name tag), name-tag (lower third), silhouette-intro, window-cards (retro desktop windows of your reels that a cursor clicks), bottom-fade. Effects track the face, sit behind or in front of the person, never cover the face, keep out of the Reels UI zones and follow measured motion rules. Use when the user says facecam maxxing / facecammaxxing, gives a talking-head clip and asks for an effect, names one of the effects, asks for "text behind my head", "cards behind me", kinetic / word-by-word captions, a lower-third name tag, retro window cards, a silhouette intro, a Kallaway split / split-screen chart, a freeze frame, a tier list, a before/after grade, a 3D object / prop / trophy / Blender model next to them, or wants the Claude-edit style effects on their own footage.
 ---
 
 # Facecam maxxing
@@ -90,47 +90,61 @@ untrue → face / platform UI → idea → connections → hierarchy → timing 
 short NOTE (each effect and what it buys, what is real vs illustrative, what you would still fix), and remind the user in one line
 to watch it before posting.
 
-The six guide effects are timed to their reference length (over-the-shoulder 2.8 s, kallaway-split 4 s, the rest 3 s). Give them
-that window; a longer window slows every move to match (the user can ask "make it 4 seconds"). `$FCM list` prints every effect and
-its options (read from the code, so it is always current).
+Some effects are written against a set length (over-the-shoulder 2.8 s, kallaway-split 4 s, window-cards 1.8 s; freeze-frame,
+tier-list, text-behind, color-grade and glass-graph 3 s). Give them that window; a longer window slows every move to match (the user
+can ask "make it 4 seconds"). `$FCM list` prints every effect and its options (read from the code, so it is always current).
 
-## The six (guide effects)
+## The effect library
+22 effects, all equal: one library, grouped here only by the job they do in a beat (proof gets proof, a claim gets a prop, a reveal
+gets a camera move). Every effect has a ready plan in `examples/<fx>.json` and a demo render of it in `demo/<fx>.mp4`; two
+combined plans show effects working together (`examples/editorial-hook.json`, `examples/podcast-hook.json`).
+
+### Proof and numbers
 | fx | What happens | Options |
 |---|---|---|
 | `over-the-shoulder` | Camera pushes over the left shoulder to a Before card, swings to the right for After, settles. Cards slide out from behind the head and tuck back; motion blur follows camera speed. | `before`, `after`, `before_label`, `after_label`, `parallax` |
 | `kallaway-split` | "You're the peak": plays full frame, then drops (motion-blurred, its shadow tightening as it lands) into a rounded card on grained grid paper. The card's top edge is the chart's ground: bars rise out from behind it as a skyline that peaks behind your head, the best number in Claude orange, the rest hatched in ink falling away to both sides, values counting up from the outside in, the hero last. A marker loop circles the hero; the title's accent word gets a marker underline; opens back to full frame. | `bars` (`Label:Value\|...`), `title`, `by`, `accent`, `pop`, `card`, `scale` |
-| `freeze-frame` | Shot freezes with a 4 % pop, room greys over 12 frames, white sticker outline + name tag, slow push while frozen, then lets go. | `name`, `role`, `flash` (0/1) |
+| `glass-graph` | A frosted glass card rises at chest height; the number counts up in 18 frames and an orange graph draws with it. | `text`, `from`, `to`, `color` |
+| `glass-widgets` | Frosted glass widgets around your head: a counting stat, a climbing watch-time graph, a follow card, an "Edited by Claude" pill. | `text`, `label`, `delta`, `graph`, `hours`, `name`, `handle`, `pill`, `tone` (dark \| light) |
 | `tier-list` | Classic creator tier list (pastel S-D tiles, charcoal bars, white items) under the chin; items drop in every 4 frames, rows nudge as they land, status rolls to "Ranked". | `text` (topic), `S` `A` `B` `C` `D` (items with `\|`), `logos` (folder; file names = items) |
-| `text-behind` | A huge condensed word rises out from behind the body, focusing, holds behind the head with a slow lift, sinks back. | `text`, `color`, `height`, `y` |
-| `color-grade` | Flat LOG look; a line of light wipes across leaving a cinematic teal/warm grade; Before / After pills ride the line. | - |
 
-## Hook effects (studied from two reference reels)
-Reel 1 is an editorial talking head (yellow condensed caps + a script, words behind the head, retro windows, hard punch-ins);
-reel 3 is a podcast (silhouette open, name tag, small lead-in over one big accent word). Examples: `examples/editorial-hook.json`,
-`examples/podcast-hook.json`.
-
+### Type and captions
 | fx | What happens | Options |
 |---|---|---|
+| `text-behind` | A huge condensed word rises out from behind the body, focusing, holds behind the head with a slow lift, sinks back (or `exit: blow`). | `text`, `color`, `height`, `y`, `exit` |
+| `backdrop-word` | A giant word drops in behind you letter by letter, with motion blur, and stays still while the camera moves. | `text`, `color`, `font` (anton \| bold \| serif), `width`, `y` |
 | `kinetic-caption` | Words land one at a time, each focusing up from a blur. Big words are condensed caps (editorial) or heavy tight sans (podcast); `_underscored_` words are the small voice (a script, or small white). At `y: top` the last line straddles the top of your head and sits behind you; lower down it is in front and keeps its size through a punch-in. Leaves by `drop` (falls out with vertical motion blur) or `blow` (grows past the camera, going soft). | `text` (`_If you want your_ / CONTENT`), `style` (editorial \| podcast), `y` (top \| chest \| low \| 0-1), `layer`, `times` (clip seconds per word from `fcm words`), `rate` (4 frames), `size`, `color`, `exit`, `exit_dur` |
-| `window-cards` | Retro desktop windows showing your reels (`thumbs/` or `images`) slide in under the chin like a conveyor; a cursor flies in and clicks one; it grows to the centre while the others leave; all drop out (1.8 s). | `images`, `count` (4), `pick` (2), `grow`, `title`, `titles` |
-| `name-tag` | Outlined pill open on the left edge, name + role, slides in from the left focusing, slides back out. | `name`, `role`, `y` |
+
+### Camera, light and look
+| fx | What happens | Options |
+|---|---|---|
+| `lean-in` (`punch-in`) | The hard punch on one word: in over 5 frames with camera motion blur while the room and the words behind you go soft (`dof`), a slow creep while it holds, out over 6 frames. | `zoom`, `parallax`, `dof`, `in`, `out` |
+| `slow-push` | A slow cinematic push-in while the room melts out of focus; real parallax on a still camera. | `zoom`, `blur`, `parallax` |
+| `spotlight` | The lights go down, you stay lit with a warm rim, an optional glowing word behind you. | `text`, `color`, `push` |
+| `color-grade` | Flat LOG look; a line of light wipes across leaving a cinematic teal/warm grade; Before / After pills ride the line. | - |
+| `grade` | A colour grade on the room and you, with a vignette. | `grade` (moody \| bw \| warm \| cool \| pop) |
+| `locked-on` | Corner brackets snap onto your face, a tag and a readout, and the camera follows you. It uses page chrome the director's rules list under "never ship": use it when the user asks for it. | `zoom`, `text`, `color` |
+
+### 3D and depth
+| fx | What happens | Options |
+|---|---|---|
+| `prop-3d` | A modelled prop (Blender GLB) lands beside your head (the side with more room; under the chin when neither fits) from oversize, turning into place, sways or spins while it holds, and drops out with motion blur. Lit by the studio environment plus a key light from the room's side, with a soft shadow. A clock's hands sweep `hours` and land exactly on the new time; a phone shows `image` (the real screenshot) on its screen, unlit so the UI reads true. | `model` (`trophy` \| `clock` \| `coin` \| `phone` \| `check` \| `x` \| a name in `<job>/models/` \| a `.glb` path), `side` (auto \| left \| right \| chin), `size`, `y`, `layer` (front \| behind), `spin` (deg/s; 0 = sway), `sway`, `tilt`, `light` (left \| right), `key`, `hours`, `time` (10:10), `image` |
+| `carousel-spin` | Your reels spin around you in a real 3D carousel (Three.js), the front cards passing under your chin, then settle. | `images` (folder), `count`, `size`, `radius`, `tilt`, `turns`, `dof` |
+| `orbit` | Your reels orbit your head in 3D: behind you at the top, in front at the bottom. | `images` (folder), `count`, `size`, `speed`, `tilt` |
+
+### People, openers and framing
+| fx | What happens | Options |
+|---|---|---|
+| `freeze-frame` | Shot freezes with a 4 % pop, room greys over 12 frames, white sticker outline + name tag, slow push while frozen, then lets go. | `name`, `role`, `flash` (0/1) |
+| `name-tag` | Lower third: an outlined pill open on the left edge, name + role, slides in from the left focusing, slides back out. | `name`, `role`, `y` |
 | `silhouette-intro` | The first few frames show you as a flat cream silhouette over the real room, then the footage cuts in. Put it at 0. | `frames` (4), `color` |
+| `window-cards` | Retro desktop windows showing your reels (`thumbs/` or `images`) slide in under the chin like a conveyor; a cursor flies in and clicks one; it grows to the centre while the others leave; all drop out. | `images`, `count` (4), `pick` (2), `grow`, `title`, `titles` |
 | `bottom-fade` | The bottom of the frame fades to dark (over you, under the captions: list it before them), optional soft room. | `amount`, `from`, `soft` |
 
-Timing: run `$FCM words <job>` and pass each caption's word starts as `times`, so every word lands on the voice. Chest captions
-and `window-cards` share the band under the chin: don't overlap them in time. Yellow editorial captions want a darker wall; on a
-light wall pass `color` (or use `style: podcast` with `color: "#ffffff"`). `lean-in` (alias `punch-in`) is the reel's punch:
-in over 5 frames with camera motion blur, the room and the words behind you blur (`dof`), a slow creep while it holds, out
-over 6 frames. `text-behind` takes `exit: blow` for the same leave.
-
-## 3D props (the Blender lane)
-| fx | What happens | Options |
-|---|---|---|
-| `prop-3d` | A modelled prop lands beside your head (the side with more room; under the chin when neither fits) from oversize, turning into place, sways or spins while it holds, and drops out with motion blur. Lit by the studio environment plus a key light from the room's side, with a soft shadow. A clock's hands sweep `hours` and land exactly on the new time; a phone shows `image` (the real screenshot) on its screen, unlit so the UI reads true. | `model` (`trophy` \| `clock` \| `coin` \| `phone` \| `check` \| `x` \| a name in `<job>/models/` \| a `.glb` path), `side` (auto \| left \| right \| chin), `size`, `y`, `layer` (front \| behind), `spin` (deg/s; 0 = sway), `sway`, `tilt`, `light` (left \| right), `key`, `hours`, `time` (10:10), `image` |
-
-Extras on the same stack: `glass-graph` (frosted card + counting number + orange line; the guide's original effect 2), `carousel-spin`, `orbit` (Three.js rings of reel cards; `images` folder), `glass-widgets`, `spotlight`,
-`backdrop-word`, `slow-push` (real parallax on a still camera), `lean-in`, `grade`, `locked-on`. These predate the motion rules;
-`locked-on` uses corner brackets and a readout, which the rules list under "never ship" - use it only when asked.
+Combining them: run `$FCM words <job>` and pass each caption's word starts as `times`, so every word lands on the voice. Chest
+captions, `window-cards`, `tier-list` and chin props share the band under the chin: don't overlap them in time. Yellow editorial
+captions want a darker wall; on a light wall pass `color` (or use `style: podcast` with `color: "#ffffff"`). Put camera effects
+first in the plan; don't stack a full-width word with a big push.
 
 ## Rules (read `docs/director.md` and `docs/motion-rules.md` before changing or adding an effect)
 - **Never cover the face.** Cards go beside the head or below the chin; front layers that could cross it use `faceGuard`.
@@ -141,7 +155,7 @@ Extras on the same stack: `glass-graph` (frosted card + counting number + orange
   have none, mark the numbers as examples on screen or in the caption.
 - **Motion**: entries do most of their travel in the first 4-8 frames, exits ease in; things arrive by moving, unmasking or
   focusing, almost never by fading; one visible spring per film (the freeze-frame pop); no light flashes; every hold keeps one
-  living thing. Stacking: put camera effects first; don't stack a full-width word with a big push.
+  living thing.
 - Visuals only: sound effects and captions are added elsewhere (CapCut, or reelmaxxing's captions).
 
 ## Adding an effect

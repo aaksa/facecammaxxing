@@ -140,7 +140,7 @@ const Vignette: React.FC<{ k: number; amt?: number }> = ({ k, amt = 0.55 }) => (
 );
 
 // ---------- the registry ----------
-// The guide's six come first; the rest are extras built on the same stack.
+// One library, every effect equal; the order here is only the order `fcm list` prints.
 export const EFFECTS: Record<string, FxDef> = {
   ...GUIDE,
   'glass-graph': GLASS_GRAPH,

@@ -41,7 +41,7 @@ def effects():
     consts = {m.group(1): (m.group(2), m.group(3)) for t in files for m in
               re.finditer(r"export const (\w+): FxDef = \{\n\s+desc: '([^']*)',\n\s+options: '([^']*)'", t)}
     fx = {}
-    for t in [open(GUIDE).read(), src]:          # registry order: the guide's six, then the extras
+    for t in [open(GUIDE).read(), src]:          # the order effects are registered in
         for m in re.finditer(r"^  (?:" + entry + r"|'?([a-z0-9-]+)'?: ([A-Z0-9_]+),)", t, re.M):
             if m.group(1): fx[m.group(1)] = (m.group(2), m.group(3))
             elif m.group(5) in consts: fx[m.group(4)] = consts[m.group(5)]

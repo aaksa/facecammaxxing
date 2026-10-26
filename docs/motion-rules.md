@@ -1,9 +1,8 @@
 # Motion rules for facecam effects
 
 Distilled from *pro-animation-director* (the reelmaxxing / motionmaxxing house rules) down to what applies to an effect laid
-over a real talking-head clip. These numbers are measured at 30 fps; the effects in `remotion/src/effects/guide.tsx` are
-written against them. Where the "6 effects" guide asks for something these rules forbid, the rule wins and the guide's
-version stays available as an option (noted below).
+over a real talking-head clip. These numbers are measured at 30 fps, and every effect in the library is held to them. Where an
+effect's original look breaks a rule, the rule wins and the original stays available as an option (noted below).
 
 ## Timing
 - **Land decelerates, leave accelerates.** An entry does most of its travel in the first 4-8 frames, then a long soft tail

@@ -1,0 +1,4 @@
+{"effects": [
+  {"fx": "kinetic-caption", "start": 0.2, "end": 1.6, "text": "_If you want your_ / CONTENT", "y": "top", "color": "#141418"},
+  {"fx": "kinetic-caption", "start": 1.7, "end": 3.2, "text": "STOP PEOPLE / _from scrolling_", "y": "chest"}
+]}

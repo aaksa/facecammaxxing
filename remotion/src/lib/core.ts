@@ -62,7 +62,7 @@ export type FxDef = {
   Backdrop?: React.FC<{ c: FxCtx }>;         // screen-space set behind the shot (seen around a card)
 };
 
-/** Effect time in the frames of its reference timing: the guide's effects are written in 30 fps frames of a set length,
+/** Effect time in the frames of its reference timing: effects written against a set length are timed in its 30 fps frames,
  *  so a longer or shorter window stretches every move to match. */
 export const specFrame = (c: FxCtx, refFrames: number) => (c.t / c.d) * refFrames;
 /** Eased 0..1 between two reference frames. */

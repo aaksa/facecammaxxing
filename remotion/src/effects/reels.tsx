@@ -10,7 +10,7 @@ import { band, chin, px, rightEdge, zones } from '../lib/layout';
 //     retro window cards under the chin that a cursor clicks, hard punch-ins (lean-in) and exits that drop with motion blur.
 //   reel 3 (podcast): a flat silhouette for the first frames, a lower-third name tag sliding in from the left edge,
 //     small lead-in words over one big accent word, a dark fade at the bottom.
-// Same rules as the guide's six: entries focus in from blur in ~6 frames, exits ease in and leave by moving, nothing
+// Same rules as the rest of the library: entries focus in from blur in ~6 frames, exits ease in and leave by moving, nothing
 // over the face, nothing in the platform zones.
 
 // ---------- shared: exits and a vertical motion blur ----------

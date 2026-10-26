@@ -38,6 +38,22 @@ const plans = String(args.plan).split(',').map((pp, k) => {
     names.forEach((n) => fs.copyFileSync(path.join(dir, n), path.join(dst, n)));
     e[key] = names.map((n) => `${key}/${k}_${i}/${n}`).join('|');
   }));
+  // single files: a 3D model (prop-3d) and a screen image are copied in the same way; a bare model name is a GLB in the
+  // job's models/ (from `fcm blender`), or one of the skill's built-in props
+  effects.forEach((e, i) => ['model', 'image'].forEach((key) => {
+    if (!e[key] || typeof e[key] !== 'string') return;
+    if (key === 'model' && !/[./]/.test(e[key])) {
+      const own = path.join(job, 'models', `${e[key]}.glb`), shipped = path.join(here, '..', 'props', `${e[key]}.glb`);
+      if (fs.existsSync(own)) return;
+      if (!fs.existsSync(shipped)) die(`model "${e[key]}" not found: make it with  fcm.py blender ${job} ${e[key]}  (or give a .glb path)`);
+      fs.mkdirSync(path.dirname(own), { recursive: true }); fs.copyFileSync(shipped, own); return;
+    }
+    const src = path.resolve(path.dirname(path.resolve(pp)), e[key].replace(/^~(?=\/)/, os.homedir()));
+    if (!fs.existsSync(src) || !fs.statSync(src).isFile()) die(`${key} file not found: ${src}`);
+    const name = `${key}s/${k}_${i}_${path.basename(src)}`;
+    fs.mkdirSync(path.join(job, `${key}s`), { recursive: true }); fs.copyFileSync(src, path.join(job, name));
+    e[key] = name;
+  }));
   return { name: path.basename(pp).replace(/\.json$/, ''), inputProps: { track, effects, cards, hasRoom: fs.existsSync(path.join(job, 'room.mp4')) } };
 });
 
@@ -47,27 +63,29 @@ process.stdout.write('Bundling... ');
 const serveUrl = await bundle({ entryPoint: path.join(here, 'src/index.ts'), publicDir: job, onProgress: () => {} });
 console.log(secs());
 const chromiumOptions = { gl: 'angle' };
+// a Chrome of your own (offline, or a locked-down network): --browser <path> or FCM_BROWSER
+const browserExecutable = args.browser ?? process.env.FCM_BROWSER ?? null;
 const scale = Number(args.scale ?? 1);
 
 if (args.still) {
   const outDir = path.resolve(args['out-dir'] ?? path.join(job, 'check'));
   fs.mkdirSync(outDir, { recursive: true });
   for (const { name, inputProps } of plans) {
-    const composition = await selectComposition({ serveUrl, id: 'Facecam', inputProps, chromiumOptions });
+    const composition = await selectComposition({ serveUrl, id: 'Facecam', inputProps, chromiumOptions, browserExecutable });
     for (const s of String(args.still).split(',').map(Number)) {
       const frame = Math.min(composition.durationInFrames - 1, Math.max(0, Math.round(s * composition.fps)));
       const output = path.join(outDir, `${plans.length > 1 ? name + '_' : ''}${s.toFixed(2)}.png`);
-      await renderStill({ composition, serveUrl, output, frame, inputProps, chromiumOptions, scale, imageFormat: 'png' });
+      await renderStill({ composition, serveUrl, output, frame, inputProps, chromiumOptions, browserExecutable, scale, imageFormat: 'png' });
       console.log('saved', output, secs());
     }
   }
 } else {
   const { inputProps } = plans[0];
-  const composition = await selectComposition({ serveUrl, id: 'Facecam', inputProps, chromiumOptions });
+  const composition = await selectComposition({ serveUrl, id: 'Facecam', inputProps, chromiumOptions, browserExecutable });
   const out = path.resolve(args.out ?? path.join(job, 'out.mp4'));
   let last = -1;
   await renderMedia({
-    composition, serveUrl, codec: 'h264', outputLocation: out, inputProps, chromiumOptions, scale,
+    composition, serveUrl, codec: 'h264', outputLocation: out, inputProps, chromiumOptions, browserExecutable, scale,
     frameRange: args.range ? String(args.range).split('-').map((v, i) => Math.min(composition.durationInFrames - 1, Math.max(0, Math.round(Number(v) * composition.fps) - i))) : undefined,
     crf: Number(args.crf ?? 16), pixelFormat: 'yuv420p', imageFormat: 'jpeg', jpegQuality: 94,
     concurrency: Number(args.concurrency ?? Math.max(1, Math.min(8, Math.floor(os.cpus().length / 2)))),

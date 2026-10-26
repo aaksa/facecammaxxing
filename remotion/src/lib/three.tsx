@@ -4,7 +4,8 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { useAsync } from './assets';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { cardSrc, useAsync } from './assets';
 import { fontsReady } from './fonts';
 
 // The Three.js lane. Every 3D effect draws into a PixelCanvas: a frame-sized canvas whose z = 0 plane maps 1:1 onto the
@@ -81,4 +82,42 @@ export function textCanvas(text: string, font: string, color: string, padX = 0, 
   extra?.(g, w, h);
   g.font = font; g.fillStyle = color; g.textBaseline = 'alphabetic'; g.fillText(text, padX, padY + asc);
   return cv;
+}
+
+// ---------- models (the Blender lane) ----------
+/** A GLB from the job folder (made by `fcm blender`, or any glTF binary), loaded once; the render waits for it.
+ *  The same scene is shared by every frame, so clone it (useFitted) before changing anything on it. */
+export function useGLB(src: string): THREE.Group | null {
+  return useAsync(`glb:${src}`, async () => (await new GLTFLoader().loadAsync(cardSrc(src))).scene);
+}
+
+/** A clone of a model, centred on its bounding box and scaled so its larger side (width or height) is 1. */
+export function useFitted(scene: THREE.Group | null): { obj: THREE.Group; aspect: number } | null {
+  return useMemo(() => {
+    if (!scene) return null;
+    const inner = scene.clone(true), obj = new THREE.Group();
+    const box = new THREE.Box3().setFromObject(inner), size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+    const s = 1 / Math.max(size.x, size.y, 1e-6);
+    inner.position.sub(mid).multiplyScalar(s); inner.scale.multiplyScalar(s);
+    obj.add(inner);
+    return { obj, aspect: size.x / Math.max(size.y, 1e-6) };
+  }, [scene]);
+}
+
+/** An image as a texture for a glTF mesh's UVs (flipY off, as glTF expects); null for no image. */
+export function useMeshTexture(src: string): THREE.Texture | null {
+  return useAsync(`meshtex:${src}`, async () => {
+    if (!src) return null;
+    const t = await new THREE.TextureLoader().loadAsync(cardSrc(src));
+    t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.needsUpdate = true;
+    return t;
+  });
+}
+
+/** Cover-fit a texture onto a surface of aspect w / h (crops the image's long side, centred). */
+export function cover(t: THREE.Texture, aspect: number): THREE.Texture {
+  const im = t.image as { width: number; height: number }, a = im.width / im.height;
+  if (a > aspect) { t.repeat.set(aspect / a, 1); t.offset.set((1 - aspect / a) / 2, 0); }
+  else { t.repeat.set(1, a / aspect); t.offset.set(0, (1 - a / aspect) / 2); }
+  return t;
 }

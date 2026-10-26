@@ -6,6 +6,7 @@ import { useFitSize } from '../lib/assets';
 import { CardRing } from './CardRing';
 import { GlassBehind, GlassFront } from './GlassWidgets';
 import { GLASS_GRAPH, GUIDE } from './guide';
+import { MODEL_PROP } from './Prop3D';
 import { BOTTOM_FADE, KINETIC_CAPTION, NAME_TAG, SILHOUETTE_INTRO, WINDOW_CARDS } from './reels';
 
 // Every effect is a pure function of its own clock (c.t from 0 to c.d seconds) and the tracked face.
@@ -205,6 +206,7 @@ export const EFFECTS: Record<string, FxDef> = {
   'name-tag': NAME_TAG,
   'silhouette-intro': SILHOUETTE_INTRO,
   'bottom-fade': BOTTOM_FADE,
+  'prop-3d': MODEL_PROP,
   grade: {
     desc: 'A colour grade on the room and you',
     options: 'grade (moody | bw | warm | cool | pop)',
@@ -220,6 +222,7 @@ export const ALIASES: Record<string, string> = {
   caption: 'kinetic-caption', captions: 'kinetic-caption', kinetic: 'kinetic-caption', windows: 'window-cards', window: 'window-cards', 'retro-windows': 'window-cards',
   nametag: 'name-tag', 'lower-third': 'name-tag', lowerthird: 'name-tag', silhouette: 'silhouette-intro', 'bottom-gradient': 'bottom-fade', fade: 'bottom-fade',
   shoulder: 'over-the-shoulder', ots: 'over-the-shoulder', overtheshoulder: 'over-the-shoulder', graph: 'glass-graph', glassgraph: 'glass-graph', kallaway: 'kallaway-split', 'kallaway-chart': 'kallaway-split', 'split-chart': 'kallaway-split', 'bar-chart': 'kallaway-split', chart: 'kallaway-split',
+  prop: 'prop-3d', model: 'prop-3d', '3d': 'prop-3d', trophy: 'prop-3d', blender: 'prop-3d',
   freeze: 'freeze-frame', freezeframe: 'freeze-frame', sticker: 'freeze-frame', tiers: 'tier-list', tier: 'tier-list', tierlist: 'tier-list',
   'text-behind-head': 'text-behind', textbehind: 'text-behind', 'colour-grade': 'color-grade', colorgrade: 'color-grade', 'before-after': 'color-grade', wipe: 'color-grade',
 };

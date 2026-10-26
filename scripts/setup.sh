@@ -38,4 +38,6 @@ if [ ! -d remotion/node_modules/@remotion/renderer ]; then
   (cd remotion && PATH="$(dirname "$(command -v "$NODE")"):$PATH" npm install --no-audit --no-fund --loglevel=error)
 fi
 
+command -v blender >/dev/null 2>&1 || [ -n "${BLENDER:-}${BLENDER_PY:-}" ] || [ -x /Applications/Blender.app/Contents/MacOS/Blender ] \
+  || echo "note: Blender not found; only new 3D props need it (fcm.py blender). The built-in props ship in props/."
 .venv/bin/python -c "import mediapipe, cv2, onnxruntime, PIL, numpy" && echo READY

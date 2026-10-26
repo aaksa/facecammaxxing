@@ -1,0 +1,9 @@
+.venv/
+remotion/node_modules/
+remotion/out/
+models/rvm_mobilenetv3_fp32.onnx
+models/*.part
+__pycache__/
+*.pyc
+.DS_Store
+references/

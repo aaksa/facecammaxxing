@@ -1,0 +1,10 @@
+{"effects": [
+  {"fx": "kinetic-caption", "start": 0.0, "end": 1.3, "text": "_If you want your_ / CONTENT", "y": "top"},
+  {"fx": "window-cards", "start": 0.5, "end": 2.3},
+  {"fx": "lean-in", "start": 2.2, "end": 3.4},
+  {"fx": "kinetic-caption", "start": 2.2, "end": 3.4, "text": "STOP PEOPLE / _from scrolling_", "y": "chest"},
+  {"fx": "kinetic-caption", "start": 3.5, "end": 5.4, "text": "FIX YOUR", "y": "top"},
+  {"fx": "kinetic-caption", "start": 3.8, "end": 5.4, "text": "VERTICAL / _framing_", "y": "chest"},
+  {"fx": "lean-in", "start": 5.5, "end": 6.8},
+  {"fx": "kinetic-caption", "start": 5.5, "end": 6.8, "text": "_Let me show you how_", "y": "chest"}
+]}

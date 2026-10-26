@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""facecammaxxing: one entry point for the whole pipeline.
+
+  fcm.py setup                                   install everything once (prints READY)
+  fcm.py list                                    the effects and their options
+  fcm.py track  <video> [<job-dir>] [--width 2160] [--matte mediapipe]
+                                                 pass 1: cut-out, face path, clean room (default job: ./<video>_facecam)
+  fcm.py words  <job-dir>                        word timings (words.json), for "when I say X"
+  fcm.py check  <job-dir> <plan.json> --at 1.2,3.4 [--at-mid]
+                                                 check stills + one contact sheet (look at it before rendering)
+  fcm.py render <job-dir> <plan.json> [--out out.mp4] [--draft] [--range 0.5-3.5]
+                                                 the final MP4 (draft = half size, fast; range = only those seconds)
+"""
+import glob, json, os, re, shutil, subprocess, sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PY = os.path.join(ROOT, '.venv', 'bin', 'python')
+REMOTION = os.path.join(ROOT, 'remotion')
+REGISTRY = os.path.join(REMOTION, 'src', 'effects', 'index.tsx')
+GUIDE = os.path.join(REMOTION, 'src', 'effects', 'guide.tsx')
+
+
+def node22():
+    cands = [shutil.which('node')] + sorted(glob.glob(os.path.expanduser('~/.nvm/versions/node/v*/bin/node')), reverse=True)
+    for n in cands:
+        if not n: continue
+        try:
+            v = subprocess.run([n, '-p', 'process.versions.node'], capture_output=True, text=True).stdout.strip()
+            if int(v.split('.')[0]) >= 22: return n
+        except Exception: pass
+    sys.exit('Node 22 or newer is needed (https://nodejs.org, or nvm install 22).')
+
+
+def effects():
+    """Read the effect names, descriptions, options and aliases straight from the Remotion registry."""
+    files = [open(f).read() for f in sorted(glob.glob(os.path.join(REMOTION, 'src', 'effects', '*.tsx')))]
+    src = open(REGISTRY).read()
+    entry = r"'?([a-z-]+)'?: \{\n\s+desc: '([^']*)',\n\s+options: '([^']*)'"
+    consts = {m.group(1): (m.group(2), m.group(3)) for t in files for m in
+              re.finditer(r"export const (\w+): FxDef = \{\n\s+desc: '([^']*)',\n\s+options: '([^']*)'", t)}
+    fx = {}
+    for t in [open(GUIDE).read(), src]:          # registry order: the guide's six, then the extras
+        for m in re.finditer(r"^  (?:" + entry + r"|'?([a-z-]+)'?: ([A-Z_]+),)", t, re.M):
+            if m.group(1): fx[m.group(1)] = (m.group(2), m.group(3))
+            elif m.group(5) in consts: fx[m.group(4)] = consts[m.group(5)]
+    al = dict(re.findall(r"'?([a-z-]+)'?: '([a-z-]+)'", src[src.index('export const ALIASES'):]))
+    return fx, al
+
+
+def load_plan(path, job):
+    plan = json.load(open(path))
+    items = plan.get('effects', plan) if isinstance(plan, dict) else plan
+    fx, al = effects()
+    dur = json.load(open(os.path.join(job, 'track.json')))['duration']
+    bad = []
+    for e in items:
+        name = al.get(e['fx'].lower().lstrip('/'), e['fx'].lower().lstrip('/'))
+        if name not in fx: bad.append(e['fx'])
+        if float(e.get('end', dur)) <= float(e.get('start', 0)): sys.exit(f"{e['fx']}: end must be after start")
+        if float(e.get('start', 0)) >= dur: print(f"warning: {e['fx']} starts at {e['start']}s, after the clip ends ({dur:.2f}s)")
+    if bad: sys.exit(f"Unknown effect(s): {', '.join(bad)}. Run `fcm.py list`.")
+    return items
+
+
+def render(args):
+    r = subprocess.run([node22(), os.path.join(REMOTION, 'render.mjs')] + args, cwd=REMOTION)
+    if r.returncode: sys.exit(r.returncode)
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help'): print(__doc__); return
+    cmd, rest = sys.argv[1], sys.argv[2:]
+    valued = ('--at', '--out', '--width', '--matte', '--max-fps', '--concurrency', '--crf', '--range')
+    flag = lambda k, d=None: rest[rest.index(k) + 1] if k in rest and rest.index(k) + 1 < len(rest) else d
+    pos = [a for i, a in enumerate(rest) if not a.startswith('--') and (i == 0 or rest[i - 1] not in valued)]
+
+    if cmd == 'setup':
+        sys.exit(subprocess.run(['bash', os.path.join(ROOT, 'scripts', 'setup.sh')]).returncode)
+    if not os.path.exists(PY) or not os.path.isdir(os.path.join(REMOTION, 'node_modules')):
+        sys.exit('Not set up yet: run `fcm.py setup` first.')
+
+    if cmd == 'list':
+        fx, al = effects()
+        for i, (k, (d, o)) in enumerate(fx.items()):
+            print(f'{i + 1:2d}. {k:15s} {d}\n    options: {o}')
+        print('\naliases: ' + ', '.join(f'{a} -> {b}' for a, b in al.items()))
+    elif cmd == 'track':
+        video = os.path.abspath(pos[0])
+        job = os.path.abspath(pos[1]) if len(pos) > 1 else os.path.join(os.getcwd(), os.path.splitext(os.path.basename(video))[0] + '_facecam')
+        extra = [x for k in ('--width', '--matte', '--max-fps') if flag(k) for x in (k, flag(k))]
+        sys.exit(subprocess.run([PY, os.path.join(ROOT, 'scripts', 'track.py'), video, job] + extra).returncode)
+    elif cmd == 'words':
+        sys.exit(subprocess.run([PY, os.path.join(ROOT, 'scripts', 'words.py'), os.path.abspath(pos[0])]).returncode)
+    elif cmd == 'check':
+        job, plan = os.path.abspath(pos[0]), os.path.abspath(pos[1])
+        items = load_plan(plan, job)
+        at = flag('--at')
+        if not at or '--at-mid' in rest:  # the middle of every effect, plus its first third (the entrance)
+            ts = sorted({round(float(e['start']) + (float(e['end']) - float(e['start'])) * k, 2) for e in items for k in (0.3, 0.6)})
+            at = ','.join(str(t) for t in ts)
+        out = os.path.join(job, 'check', os.path.splitext(os.path.basename(plan))[0])
+        shutil.rmtree(out, ignore_errors=True)
+        render(['--job', job, '--plan', plan, '--still', at, '--out-dir', out])
+        pngs = sorted(glob.glob(os.path.join(out, '*.png')), key=lambda p: float(os.path.basename(p)[:-4]))
+        subprocess.run([PY, os.path.join(ROOT, 'scripts', 'sheet.py'), os.path.join(out, 'sheet.jpg')] + pngs + ['--cols', str(min(5, len(pngs)))], check=True)
+    elif cmd == 'render':
+        job, plan = os.path.abspath(pos[0]), os.path.abspath(pos[1])
+        load_plan(plan, job)
+        out = os.path.abspath(flag('--out') or os.path.join(job, os.path.splitext(os.path.basename(plan))[0] + ('_draft' if '--draft' in rest else '') + '.mp4'))
+        render(['--job', job, '--plan', plan, '--out', out] + (['--scale', '0.5'] if '--draft' in rest else [])
+               + [x for k in ('--concurrency', '--crf', '--range') if flag(k) for x in (k, flag(k))])
+    else:
+        sys.exit(f'unknown command {cmd!r}\n{__doc__}')
+
+
+if __name__ == '__main__':
+    main()

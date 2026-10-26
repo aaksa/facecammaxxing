@@ -1,0 +1,7 @@
+{"effects": [
+  {"fx": "silhouette-intro", "start": 0.0, "end": 0.5},
+  {"fx": "bottom-fade", "start": 0.0, "end": 6.84, "soft": 3},
+  {"fx": "name-tag", "start": 0.15, "end": 6.84, "name": "Your Name", "role": "Educator and content creator"},
+  {"fx": "kinetic-caption", "start": 0.2, "end": 2.0, "style": "podcast", "text": "_We posted that_ / first video", "y": "chest"},
+  {"fx": "kinetic-caption", "start": 2.1, "end": 3.6, "style": "podcast", "text": "_and it_ / worked", "y": "chest", "color": "#ffffff"}
+]}

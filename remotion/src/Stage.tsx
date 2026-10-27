@@ -191,7 +191,7 @@ export const Stage: React.FC<Props> = (p) => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#000', overflow: 'hidden' }}>
-      {p.track.audio ? <Html5Audio src={staticFile('source.mp4')} /> : null}
+      {p.track.audio && !p.silent ? <Html5Audio src={staticFile('source.mp4')} /> : null}
       <svg width="0" height="0" style={{ position: 'absolute' }}>
         {mb ? <filter id="fcm-mb" x="0" y="0" width="100%" height="100%"><feGaussianBlur stdDeviation={mb} edgeMode="duplicate" /></filter> : null}
         <GradeFilters />

@@ -7,9 +7,9 @@ import { KALLAWAY } from './kallaway';
 import { arrive, band, chin, ORANGE, px, rightEdge, smoked, zones } from '../lib/layout';
 import { exitStyle } from './reels';
 
-// The six effects from the "6 video editing effects you can make with Claude" guide, built on the layer stack and
-// directed by docs/motion-rules.md (distilled from pro-animation-director). Each is written in the guide's own 30 fps
-// frame numbers (specFrame), so a longer window slows every move to match.
+// The library's effects that are written against a set length, built on the layer stack and directed by
+// docs/motion-rules.md (distilled from pro-animation-director). Each is written in 30 fps frame numbers of its reference
+// length (specFrame), so a longer window slows every move to match.
 // The rules, as they show up here: entries do most of their travel in the first 4-8 frames and exits ease in; things
 // arrive by moving, unmasking or focusing instead of fading; one visible spring in the whole set (the freeze-frame pop);
 // no light flashes; every hold keeps one living thing; nothing in the platform zones; never over the face.
@@ -384,7 +384,7 @@ export const GUIDE: Record<string, FxDef> = {
   },
 };
 
-// Glass graph was the guide's effect 2; the Kallaway split took its place. It stays as an extra.
+// Glass graph: the frosted proof card with a counter and a line.
 export const GLASS_GRAPH: FxDef = {
   desc: 'A frosted glass card rises at chest height, the number counts up in 18 frames and an orange graph draws with it (3 s)',
   options: 'text (Views this month), from (1,204), to (412K), color (#D97757)',

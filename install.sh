@@ -23,7 +23,7 @@ fi
 mkdir -p "$(dirname "$TARGET")"
 if [ ! -e "$TARGET" ]; then
   if [ "$COPY" = 1 ]; then
-    mkdir -p "$TARGET"; (cd "$HERE" && tar --exclude=.git --exclude=node_modules --exclude=.venv -cf - .) | (cd "$TARGET" && tar -xf -)
+    mkdir -p "$TARGET"; (cd "$HERE" && tar --exclude=.git --exclude=node_modules --exclude=.venv --exclude=demo -cf - .) | (cd "$TARGET" && tar -xf -)
     echo "Copied to $TARGET"
   else
     ln -s "$HERE" "$TARGET"; echo "Linked $TARGET -> $HERE"

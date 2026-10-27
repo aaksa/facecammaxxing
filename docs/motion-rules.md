@@ -1,9 +1,8 @@
 # Motion rules for facecam effects
 
 Distilled from *pro-animation-director* (the reelmaxxing / motionmaxxing house rules) down to what applies to an effect laid
-over a real talking-head clip. These numbers are measured at 30 fps; the effects in `remotion/src/effects/guide.tsx` are
-written against them. Where the "6 effects" guide asks for something these rules forbid, the rule wins and the guide's
-version stays available as an option (noted below).
+over a real talking-head clip. These numbers are measured at 30 fps, and every effect in the library is held to them. Where an
+effect's original look breaks a rule, the rule wins and the original stays available as an option (noted below).
 
 ## Timing
 - **Land decelerates, leave accelerates.** An entry does most of its travel in the first 4-8 frames, then a long soft tail
@@ -31,6 +30,9 @@ version stays available as an option (noted below).
 - One material for the whole film: glass (smoked or clear) with a thin light border and a soft shadow. No zinc-grey web UI,
   no status dot + "label · value" cards.
 - One accent colour with one meaning: Claude orange `#D97757` = the win.
+- A 3D prop (`prop-3d`) follows the same rules as a card: arrives from oversize in ~6 frames while turning into place over ~14,
+  sways or spins while held (the living thing), drops out over 8 frames. It is lit from the room's key side (`light`) and
+  casts a soft shadow; a prop lit differently from the room reads as a sticker.
 
 ## Layout (1080 × 1920, scale for other sizes)
 - Keep out of the top 0-250 px (platform UI), the bottom 1536-1920 px (caption and username) and the right rail

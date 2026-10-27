@@ -1,0 +1,4 @@
+{"intro": {"command": "/glass-graph", "description": "A glass card with a graph that climbs"},
+ "effects": [
+  {"fx": "glass-graph", "start": 0.5, "end": 3.5}
+]}

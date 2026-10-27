@@ -5,6 +5,12 @@ effects over a clean cut-out of you (RobustVideoMatting), so words, cards, 3D ri
 head** or float in front of you, track your face, and stay out of the Reels UI. It works like an award-level reel director:
 brief, one idea per sentence, a beat plan, the hardest beat first, and a measured self-review (`docs/director.md`).
 
+> **Based on [claude-video-effects](https://github.com/Vibha-Ramprakash/claude-video-effects) by Vibha Ramprakash
+> ([@vibha.in.progress](https://instagram.com/vibha.in.progress)).** The idea of a drop-in-your-clip effects skill for Claude
+> Code, many of the effect concepts and names, and the look of the ChatRender intro and the comment-keyword ending come from
+> her repo and reels. This version rebuilds the pipeline on Remotion, GSAP and Three.js. Her work is MIT licensed; its notice
+> is kept in [LICENSE](LICENSE). Go give her a follow 💛
+
 ```bash
 bash install.sh                                   # link into ~/.claude/skills/facecammaxxing
 .venv/bin/python scripts/fcm.py setup             # venv, models, Remotion (prints READY)

@@ -196,6 +196,8 @@ Hair edges should be clean and props the person holds (a mic) kept. If it is sof
 `--matte mediapipe` to compare, or improve the light on the next shoot.
 
 ## Credits and licences
+Based on [claude-video-effects](https://github.com/Vibha-Ramprakash/claude-video-effects) by Vibha Ramprakash
+(@vibha.in.progress, MIT): the idea, many effect concepts and names, and the ChatRender / ending look. Keep this credit.
 Face: OpenCV YuNet (MIT). Cut-out: RobustVideoMatting (GPL-3.0, downloaded at setup, not bundled) or MediaPipe Selfie
 Segmenter (Apache 2.0). Fonts via @remotion/google-fonts (OFL). Remotion is free for individuals and companies of up to 3
 people; larger teams need a Remotion company licence. GSAP and Three.js are free. Blender and the `bpy` module are GPL; they are only run as tools, and the props you make with them are

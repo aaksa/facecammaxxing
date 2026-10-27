@@ -4,6 +4,8 @@
 //
 //   node render.mjs --job <job-dir> --plan <plan.json> --still 1.2,3.4 [--out-dir <dir>]
 //   node render.mjs --job <job-dir> --plan <plan.json> --out <out.mp4> [--range 0.5-3.5] [--scale 0.5] [--concurrency 4] [--crf 16]
+//   [--intro]  open with the ChatRender intro (or put "intro": {"command", "description"} in the plan). With an intro,
+//              --range picks the part of the clip that follows it, and --still takes i0.8 for 0.8 s into the intro.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -54,7 +56,10 @@ const plans = String(args.plan).split(',').map((pp, k) => {
     fs.mkdirSync(path.join(job, `${key}s`), { recursive: true }); fs.copyFileSync(src, path.join(job, name));
     e[key] = name;
   }));
-  return { name: path.basename(pp).replace(/\.json$/, ''), inputProps: { track, effects, cards, hasRoom: fs.existsSync(path.join(job, 'room.mp4')) } };
+  // the ChatRender intro: from the plan, or --intro (command and description then come from the first effect)
+  const intro = raw.intro ? (raw.intro === true ? {} : raw.intro) : args.intro ? {} : null;
+  const clip = intro && args.range ? (([a, b]) => ({ from: a, to: b }))(String(args.range).split('-').map(Number)) : null;
+  return { name: path.basename(pp).replace(/\.json$/, ''), inputProps: { track, effects, cards, hasRoom: fs.existsSync(path.join(job, 'room.mp4')), intro, clip } };
 });
 
 const t0 = Date.now();
@@ -72,9 +77,14 @@ if (args.still) {
   fs.mkdirSync(outDir, { recursive: true });
   for (const { name, inputProps } of plans) {
     const composition = await selectComposition({ serveUrl, id: 'Facecam', inputProps, chromiumOptions, browserExecutable });
-    for (const s of String(args.still).split(',').map(Number)) {
-      const frame = Math.min(composition.durationInFrames - 1, Math.max(0, Math.round(s * composition.fps)));
-      const output = path.join(outDir, `${plans.length > 1 ? name + '_' : ''}${s.toFixed(2)}.png`);
+    const N = inputProps.intro ? Math.round((inputProps.intro.seconds ?? 2.5) * composition.fps) : 0;
+    const from = inputProps.clip?.from ?? 0;
+    for (const tok of String(args.still).split(',')) {
+      // i0.8 = 0.8 s into the intro; a plain number is clip seconds, after the intro
+      const inIntro = tok.startsWith('i'), s = Number(inIntro ? tok.slice(1) : tok);
+      const at = inIntro ? Math.round(s * composition.fps) : N + Math.round((s - from) * composition.fps);
+      const frame = Math.min(composition.durationInFrames - 1, Math.max(0, at));
+      const output = path.join(outDir, `${plans.length > 1 ? name + '_' : ''}${inIntro ? 'intro_' : ''}${s.toFixed(2)}.png`);
       await renderStill({ composition, serveUrl, output, frame, inputProps, chromiumOptions, browserExecutable, scale, imageFormat: 'png' });
       console.log('saved', output, secs());
     }
@@ -86,7 +96,7 @@ if (args.still) {
   let last = -1;
   await renderMedia({
     composition, serveUrl, codec: 'h264', outputLocation: out, inputProps, chromiumOptions, browserExecutable, scale,
-    frameRange: args.range ? String(args.range).split('-').map((v, i) => Math.min(composition.durationInFrames - 1, Math.max(0, Math.round(Number(v) * composition.fps) - i))) : undefined,
+    frameRange: args.range && !inputProps.clip ? String(args.range).split('-').map((v, i) => Math.min(composition.durationInFrames - 1, Math.max(0, Math.round(Number(v) * composition.fps) - i))) : undefined,
     crf: Number(args.crf ?? 16), pixelFormat: 'yuv420p', imageFormat: 'jpeg', jpegQuality: 94,
     concurrency: Number(args.concurrency ?? Math.max(1, Math.min(8, Math.floor(os.cpus().length / 2)))),
     muted: !track.audio,

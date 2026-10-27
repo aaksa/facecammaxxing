@@ -10,7 +10,14 @@ export type Track = {
   top: number[];      // per frame: top of the head, normalised by height
 };
 export type FxSpec = { fx: string; start: number; end: number } & Record<string, unknown>;
-export type Props = { track: Track; effects: FxSpec[]; cards: string[]; hasRoom: boolean };
+/** The ChatRender intro: the command typed, its one-line description, the attachment's name, its length. */
+export type IntroSpec = { command?: string; description?: string; file?: string; seconds?: number };
+export type Props = {
+  track: Track; effects: FxSpec[]; cards: string[]; hasRoom: boolean;
+  intro?: IntroSpec | null;                    // play ChatRender first, then cut to the clip
+  clip?: { from?: number; to?: number } | null; // with an intro: the part of the clip that follows it (seconds)
+  silent?: boolean;                            // no audio (the intro's frozen preview of the first frame)
+};
 export type Face = { x: number; y: number; w: number; top: number };
 
 export const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));

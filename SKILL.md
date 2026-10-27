@@ -146,6 +146,25 @@ captions, `window-cards`, `tier-list` and chin props share the band under the ch
 captions want a darker wall; on a light wall pass `color` (or use `style: podcast` with `color: "#ffffff"`). Put camera effects
 first in the plan; don't stack a full-width word with a big push.
 
+## Intro: ChatRender
+A ~2.5 s intro that can open any render. It shows a dark phone chat with the clip attached in the message box. A command is
+typed key by key on the keyboard, under a card that shows its name and one-line description. On send, the clip flies up as the
+sent message, with the command in an orange pill and "Editing with /command..." beside a spinning star. A tile of tiny dots
+then lights up into the film's first frame, grows to fill the screen, and the film cuts to it.
+```json
+{"intro": {"command": "/glass-graph", "description": "A glass card with a graph that climbs"},
+ "effects": [{"fx": "glass-graph", "start": 0.5, "end": 3.5}]}
+```
+- `intro` takes `command`, `description`, `file` (the attachment's name, `talking.mp4`) and `seconds` (2.5; every beat
+  stretches to match). Leave out `command` / `description` and they come from the first effect; `"intro": true` or
+  `fcm render ... --intro` turns it on with those defaults.
+- With an intro, `--range 0.5-3.9` picks the part of the clip that follows it. Start the range where the first effect starts:
+  the tile resolves into that frame and the cut lands on it. `fcm check` adds stills of the intro's beats (`--still i1.2` is
+  1.2 s into the intro).
+- The component is `remotion/src/intro/ChatRender.tsx` (props: `command`, `description`, `next`, `thumbnail`, `file`,
+  `seconds`); `remotion/src/Film.tsx` plays it before the clip. Example: `examples/chat-render.json`, demo `demo/chat-render.mp4`.
+- Its message box and keyboard sit in the bottom platform zone (1536-1920) by design: it is a phone screen, not an overlay.
+
 ## Rules (read `docs/director.md` and `docs/motion-rules.md` before changing or adding an effect)
 - **Never cover the face.** Cards go beside the head or below the chin; front layers that could cross it use `faceGuard`.
 - **Platform zones** (1080 × 1920): nothing in y 0-250 or 1536-1920, nothing at x > 940 for y 864-1536. Panels under the chin

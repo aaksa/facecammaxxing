@@ -8,8 +8,9 @@
   fcm.py words  <job-dir>                        word timings (words.json), for "when I say X"
   fcm.py check  <job-dir> <plan.json> --at 1.2,3.4 [--at-mid]
                                                  check stills + one contact sheet (look at it before rendering)
-  fcm.py render <job-dir> <plan.json> [--out out.mp4] [--draft] [--range 0.5-3.5]
-                                                 the final MP4 (draft = half size, fast; range = only those seconds)
+  fcm.py render <job-dir> <plan.json> [--out out.mp4] [--draft] [--range 0.5-3.5] [--intro]
+                                                 the final MP4 (draft = half size, fast; range = only those seconds;
+                                                 intro = open with ChatRender, also set by "intro" in the plan)
   fcm.py blender <job-dir> <prop|script.py> [--name <name>] [--color #hex]
                                                  model a 3D prop in headless Blender -> <job>/models/<name>.glb (for prop-3d)
 """
@@ -118,15 +119,20 @@ def main():
             at = ','.join(str(t) for t in ts)
         out = os.path.join(job, 'check', os.path.splitext(os.path.basename(plan))[0])
         shutil.rmtree(out, ignore_errors=True)
-        render(['--job', job, '--plan', plan, '--still', at, '--out-dir', out])
-        pngs = sorted(glob.glob(os.path.join(out, '*.png')), key=lambda p: float(os.path.basename(p)[:-4]))
+        raw = json.load(open(plan))
+        if '--intro' in rest or (isinstance(raw, dict) and raw.get('intro')):   # the intro's beats: typing, sent, dots, grow
+            at = ','.join(['i0.45', 'i1.05', 'i1.45', 'i1.95', 'i2.3'] + at.split(','))
+        render(['--job', job, '--plan', plan, '--still', at, '--out-dir', out] + (['--intro'] if '--intro' in rest else []))
+        order = lambda p: (lambda n: (0, float(n[6:])) if n.startswith('intro_') else (1, float(n)))(os.path.basename(p)[:-4])
+        pngs = sorted(glob.glob(os.path.join(out, '*.png')), key=order)
         subprocess.run([PY, os.path.join(ROOT, 'scripts', 'sheet.py'), os.path.join(out, 'sheet.jpg')] + pngs + ['--cols', str(min(5, len(pngs)))], check=True)
     elif cmd == 'render':
         job, plan = os.path.abspath(pos[0]), os.path.abspath(pos[1])
         load_plan(plan, job)
         out = os.path.abspath(flag('--out') or os.path.join(job, os.path.splitext(os.path.basename(plan))[0] + ('_draft' if '--draft' in rest else '') + '.mp4'))
         render(['--job', job, '--plan', plan, '--out', out] + (['--scale', '0.5'] if '--draft' in rest else [])
-               + [x for k in ('--concurrency', '--crf', '--range') if flag(k) for x in (k, flag(k))])
+               + [x for k in ('--concurrency', '--crf', '--range') if flag(k) for x in (k, flag(k))]
+               + (['--intro'] if '--intro' in rest else []))
     elif cmd == 'blender':
         job, what = os.path.abspath(pos[0]), pos[1]
         script = os.path.abspath(what) if what.endswith('.py') else os.path.join(BLENDER_KIT, 'props.py')

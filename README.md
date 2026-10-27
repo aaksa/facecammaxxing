@@ -48,6 +48,14 @@ items on screen are examples: pass your own.
 <tr><td align="center" valign="top" width="25%"><a href="demo/bottom-fade.mp4"><img src="demo/bottom-fade.webp" width="180" alt="bottom-fade"></a><br><a href="examples/bottom-fade.json"><code>bottom-fade</code></a><br><sub>The bottom fades dark so captions and tags read</sub></td></tr>
 </table>
 
+### Intro
+<table>
+<tr><td align="center" valign="top" width="25%"><a href="demo/chat-render.mp4"><img src="demo/chat-render.webp" width="180" alt="chat-render"></a><br><a href="examples/chat-render.json"><code>ChatRender</code></a><br><sub>A 2.5 s chat intro: the command is typed and sent, then dots resolve into the effect</sub></td></tr>
+</table>
+
+Any plan can open with it: add `"intro": {"command": "/glass-graph", "description": "A glass card with a graph that climbs"}`, or
+pass `--intro` to `fcm render`.
+
 ### Effects together
 <table>
 <tr><td align="center" valign="top" width="25%"><a href="demo/editorial-hook.mp4"><img src="demo/editorial-hook.webp" width="180" alt="editorial-hook"></a><br><a href="examples/editorial-hook.json"><code>editorial-hook</code></a><br><sub>Captions behind the head, retro windows, two punch-ins</sub></td><td align="center" valign="top" width="25%"><a href="demo/podcast-hook.mp4"><img src="demo/podcast-hook.webp" width="180" alt="podcast-hook"></a><br><a href="examples/podcast-hook.json"><code>podcast-hook</code></a><br><sub>Silhouette open, name tag, small lead-in over a big word</sub></td></tr>

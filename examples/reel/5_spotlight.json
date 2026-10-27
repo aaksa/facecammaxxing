@@ -1,0 +1,15 @@
+{
+ "intro": {
+  "command": "/effects spotlight",
+  "description": "kill the lights, keep you lit",
+  "seconds": 2.175
+ },
+ "effects": [
+  {
+   "fx": "spotlight",
+   "start": 1.2,
+   "end": 2.834,
+   "text": "LIGHTS OFF"
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+{
+ "intro": {
+  "command": "/effects kallaway-split",
+  "description": "your numbers rise as a chart above you",
+  "seconds": 2.4
+ },
+ "effects": [
+  {
+   "fx": "kallaway-split",
+   "start": 0.2,
+   "end": 1.901
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+{
+ "intro": {
+  "command": "/effects over-the-shoulder",
+  "description": "before and after cards behind your head",
+  "seconds": 2.175
+ },
+ "effects": [
+  {
+   "fx": "over-the-shoulder",
+   "start": 0.6,
+   "end": 2.234
+  }
+ ]
+}

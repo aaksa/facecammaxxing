@@ -1,0 +1,16 @@
+{
+ "intro": {
+  "command": "/effects glass-widgets",
+  "description": "frosted glass widgets around your head",
+  "seconds": 2.175
+ },
+ "effects": [
+  {
+   "fx": "glass-widgets",
+   "start": 3.2,
+   "end": 4.834,
+   "name": "Aksa",
+   "handle": "@aaksa"
+  }
+ ]
+}

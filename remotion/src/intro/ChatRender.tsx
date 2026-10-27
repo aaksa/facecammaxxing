@@ -4,278 +4,308 @@ import { clamp, e, lerp } from '../lib/core';
 import { FONT } from '../lib/fonts';
 import { ORANGE } from '../lib/layout';
 
-// ChatRender: a ~2.5 s intro in a dark mobile chat. A clip is already attached in the message box; "/" is typed, a command
-// card pops up, the rest of the command types out key by key on the keyboard; send; the clip flies up as the sent message
-// with the command in an orange pill and "Editing with /command..." under a spinning star; a dark tile of tiny dots lights
-// up and resolves into the first frame of what follows (`next`), grows to fill the screen, and the film cuts to it.
-// Everything is a pure function of the frame, written in the frames of a 75-frame (2.5 s at 30 fps) reference, so any
-// `seconds` stretches the whole intro to match. Layout is in 1080 x 1920 pixels, scaled to the composition.
+// ChatRender: a ~2.4 s chat intro, laid out and timed after the studied "36 effects" reel (references/instagram/De7JFJdo4KX.mp4).
+// A warm dark chat. The clip is attached in the message box; "/" opens a command card, "e" is typed and the card is tapped to
+// autocomplete "/effects", two letters of the effect are typed and tapped to complete it (the command turns orange once it is
+// recognised). Each key pops a magnified balloon. Send: the keyboard drops, the clip and the orange command go up as the sent
+// message, "Editing with <effect>..." spins, and a big 9:16 tile of orange dots fills into a mosaic that resolves into what
+// follows. `next` plays inside the tile, which then grows to fill the screen; the film continues from there with no repeat.
+// Drawn from scratch (no app logos or icon fonts). Pure function of the frame, written in the frames of a 72-frame (2.4 s at
+// 30 fps) reference, so `seconds` stretches the whole intro. Layout in 1080 x 1920 pixels, scaled to the composition.
 
 export type ChatRenderProps = {
-  command: string;              // "/glass-graph"
-  description: string;          // "A glass card with a graph that climbs"
-  next: React.ReactNode;        // the first frame of what follows, drawn at full composition size
+  command: string;              // "/effects glass-graph" (or just "/glass-graph")
+  description: string;          // the effect's line: "A glass card with a graph that climbs"
+  base?: string;                // the base command's line on its card: "22 video effects for your clips"
+  next: React.ReactNode;        // what follows, drawn at full composition size (Film plays it inside the tile from RESOLVE on)
   thumbnail: React.ReactNode;   // the attached clip, drawn at full composition size (cover-cropped into the thumb)
-  file?: string;                // the attachment's name (talking.mp4)
-  seconds?: number;             // 2.5
+  file?: string;                // kept for plans that name the attachment; not drawn in this layout
+  tag?: string;                 // the small label on the status line ("SPED UP"), '' for none
+  seconds?: number;             // 2.4
+  placeholder?: string;         // "Reply to Claude..."
 };
 
-const REF = 75;
-const BG = '#0c0c0e', PANEL = '#18181b', LINE = 'rgba(255,255,255,0.09)', DIM = '#8d8d96', INK = '#f2f2f4';
-const KEY = '#2d2d32', KEY_FN = '#202024', KEY_LIT = '#7a7a84', KBD = '#121214';
+export const REF = 72;
+export const RESOLVE = 48;     // the tile has resolved into `next` here; Film starts the clip at this frame
+/** Intro length and the frame where the clip starts playing inside the tile, in composition frames. */
+export const chatTiming = (seconds: number, fps: number) => {
+  const N = Math.round(seconds * fps);
+  return { N, R: Math.round((N * RESOLVE) / REF) };
+};
+
+// ---------- palette (sampled from the reference) ----------
+export const BG = '#262624', BOX = '#30302e', CARD = '#3e3d39', CARD_HI = '#4a4945', LINE = 'rgba(255,255,255,0.07)';
+export const INK = '#f3f0ea', DIM = '#a6a39c', FAINT = '#7d7a74';
+const KBD = '#2b2a28', BAR = '#1f1e1c', KEY = '#4a4946', KEY_FN = '#3a3936', KEY_POP = '#6b6a66';
+export const TILE_BG = '#11100f';
 
 /** A stable pseudo-random number in 0..1 for an index (no Math.random: frames render out of order). */
-const rnd = (i: number) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+export const rnd = (i: number) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
-/** When each character of the command is typed (reference frames): "/" first, then the rest with an irregular hand. */
-function typeTimes(n: number): number[] {
-  if (n <= 0) return [];
-  const t = [4];
-  if (n === 1) return t;
-  const gaps = Array.from({ length: n - 1 }, (_, i) => 0.55 + 0.9 * rnd(i + 7));
-  const sum = gaps.reduce((a, b) => a + b, 0);
-  let at = 10;
-  for (let i = 1; i < n; i++) { t.push(at); at += (23 * gaps[i - 1]) / sum; }
-  return t;
+// ---------- the typing script, in reference frames ----------
+type Ev = { f: number; text: string; key?: string; auto?: 'base' | 'arg' };
+function script(cmd: string): { evs: Ev[]; base: string; arg: string; send: number } {
+  const sp = cmd.indexOf(' '), base = sp > 0 ? cmd.slice(0, sp) : cmd, arg = sp > 0 ? cmd.slice(sp + 1) : '';
+  const evs: Ev[] = [{ f: 3, text: '/', key: '/' }];
+  if (base.length > 1) evs.push({ f: 7, text: base.slice(0, 2), key: base[1] });
+  evs.push({ f: 11, text: base + (arg ? ' ' : ''), auto: 'base' });            // tap the card: autocomplete
+  if (arg) {
+    evs.push({ f: 15, text: `${base} ${arg[0]}`, key: arg[0] });
+    if (arg.length > 1) evs.push({ f: 18, text: `${base} ${arg.slice(0, 2)}`, key: arg[1] });
+    evs.push({ f: 22, text: cmd, auto: 'arg' });
+  }
+  return { evs, base, arg, send: arg ? 27 : 17 };
 }
 
 // ---------- layout (1080 x 1920) ----------
 const W0 = 1080, H0 = 1920;
-const KB_H = 620, KB_Y = H0 - KB_H;
-const BOX = { x: 32, w: W0 - 64, h: 356, open: KB_Y - 16 - 356, rest: H0 - 44 - 196, restH: 196 };
-const THUMB_IN = { x: BOX.x + 24, w: 124, h: 168 };                     // in the box (y follows the box)
-const THUMB_OUT = { x: W0 - 48 - 300, y: 236, w: 300, h: 534 };          // the sent message
-const TILE = { x: 48, y: 958, w: 378, h: 672 };
-const CELL = 9;
+const BOXO = { x: 32, y: 814, w: 1016, h: 402 };                // the message box above the keyboard
+export const BOXS = { x: 37, y: 1767, w: 1011, h: 112 };               // after send: the one-line reply bar
+const CARDR = { x: 32, y: 644, w: 1016, h: 150 };
+const THUMB_IN = { x: 58, y: 838, w: 121, h: 168, r: 14 };
+const THUMB_OUT = { x: 914, y: 199, w: 112, h: 173, r: 12 };
+export const TILE = { x: 37, y: 551, w: 640, h: 1140, r: 22 };
+const CELL = 14;
+const KB_Y = 1253;
 
-type Rect = { x: number; y: number; w: number; h: number; r: number };
-const mixRect = (a: Rect, b: Rect, k: number): Rect => ({ x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k), r: lerp(a.r, b.r, k) });
+export type Rect = { x: number; y: number; w: number; h: number; r: number };
+export const mix = (a: Rect, b: Rect, k: number): Rect => ({ x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k), r: lerp(a.r, b.r, k) });
 
 /** A full-size node (composition W x H) cover-fitted into a rect. */
-const Fit: React.FC<{ r: Rect; W: number; H: number; children: React.ReactNode; style?: React.CSSProperties; inner?: React.CSSProperties }> =
-  ({ r, W, H, children, style, inner }) => {
-    const s = Math.max(r.w / W, r.h / H);
-    return (
-      <div style={{ position: 'absolute', left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: r.r, overflow: 'hidden', ...style }}>
-        <div style={{ position: 'absolute', width: W, height: H, left: (r.w - W * s) / 2, top: (r.h - H * s) / 2, transform: `scale(${s})`, transformOrigin: '0 0', ...inner }}>
-          {children}
-        </div>
-      </div>
-    );
-  };
-
-// ---------- icons (drawn here, no icon font) ----------
-const Svg: React.FC<{ x: number; y: number; s: number; children: React.ReactNode; vb?: number }> = ({ x, y, s, children, vb = 24 }) => (
-  <svg width={s} height={s} viewBox={`0 0 ${vb} ${vb}`} style={{ position: 'absolute', left: x, top: y }} fill="none" stroke={INK} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
-);
-const Star: React.FC<{ x: number; y: number; s: number; rot: number }> = ({ x, y, s, rot }) => (
-  <svg width={s} height={s} viewBox="-12 -12 24 24" style={{ position: 'absolute', left: x, top: y, transform: `rotate(${rot}deg)` }}>
-    <path d="M0 -11 C1.2 -3.5 3.5 -1.2 11 0 C3.5 1.2 1.2 3.5 0 11 C-1.2 3.5 -3.5 1.2 -11 0 C-3.5 -1.2 -1.2 -3.5 0 -11 Z" fill={ORANGE} />
-  </svg>
-);
-
-// ---------- keyboard ----------
-type Key = { id: string; label: string; x: number; y: number; w: number; h: number; fn: boolean };
-const KEYS: Key[] = (() => {
-  const rows: [string, number][][] = [
-    '1234567890'.split('').map((k) => [k, 1]),
-    'qwertyuiop'.split('').map((k) => [k, 1]),
-    'asdfghjkl'.split('').map((k) => [k, 1]),
-    [['shift', 1.5], ...'zxcvbnm'.split('').map((k): [string, number] => [k, 1]), ['back', 1.5]],
-    [['123', 1.5], ['/', 1], ['space', 4.5], ['-', 1], ['return', 2]],
-  ];
-  const pad = 12, gap = 11, rowH = 104, keyH = 88, top = KB_Y + 22;
-  const u = (W0 - 2 * pad - 9 * gap) / 10;
-  const out: Key[] = [];
-  rows.forEach((row, ri) => {
-    const units = row.reduce((a, [, w]) => a + w, 0);
-    const span = units * u + (row.length - 1) * gap;
-    const avail = W0 - 2 * pad;
-    const scale = units >= 10 ? (avail - (row.length - 1) * gap) / (units * u) : 1;
-    let x = pad + (avail - (units >= 10 ? avail : span)) / 2;
-    for (const [id, w] of row) {
-      const kw = w * u * scale;
-      out.push({ id, label: id, x, y: top + ri * rowH, w: kw, h: keyH, fn: id.length > 1 || id === '/' || id === '-' });
-      x += kw + gap;
-    }
-  });
-  return out;
-})();
-const keyFor = (ch: string) => (ch === ' ' ? 'space' : ch.toLowerCase());
-
-const KeyCap: React.FC<{ k: Key; lit: number }> = ({ k, lit }) => {
-  const icon = (d: React.ReactNode) => <svg width={44} height={44} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
-  const label = k.id === 'shift' ? icon(<path d="M12 4 L20 13 H15.5 V20 H8.5 V13 H4 Z" />)
-    : k.id === 'back' ? icon(<><path d="M9 5 H20 V19 H9 L3 12 Z" /><path d="M12 9.5 L16.5 14.5 M16.5 9.5 L12 14.5" /></>)
-      : k.id === 'return' ? icon(<path d="M19 6 V12 H6 M10 8 L6 12 L10 16" />)
-        : k.id === 'space' ? '' : k.label;
-  const base = k.fn ? KEY_FN : KEY;
+export const Fit: React.FC<{ r: Rect; W: number; H: number; children: React.ReactNode; style?: React.CSSProperties }> = ({ r, W, H, children, style }) => {
+  const s = Math.max(r.w / W, r.h / H);
   return (
-    <div style={{
-      position: 'absolute', left: k.x, top: k.y + lit * 2, width: k.w, height: k.h, borderRadius: 14,
-      background: lit > 0.01 ? `color-mix(in srgb, ${KEY_LIT} ${Math.round(lit * 100)}%, ${base})` : base,
-      boxShadow: `0 2px 0 rgba(0,0,0,0.55)${lit > 0.01 ? `, 0 0 ${Math.round(22 * lit)}px rgba(255,255,255,${(0.16 * lit).toFixed(3)})` : ''}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', color: INK,
-      fontFamily: FONT.ui, fontWeight: 500, fontSize: k.id.length > 1 ? 30 : 42,
-    }}>{label}</div>
+    <div style={{ position: 'absolute', left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: r.r, overflow: 'hidden', ...style }}>
+      <div style={{ position: 'absolute', width: W, height: H, left: (r.w - W * s) / 2, top: (r.h - H * s) / 2, transform: `scale(${s})`, transformOrigin: '0 0' }}>{children}</div>
+    </div>
   );
 };
 
-// ---------- the dots tile: a grid that lights up and resolves into `next` ----------
-function dotsPath(w: number, h: number, f: number, a: number, b: number): { clip: string | null; glints: [number, number, number][] } {
-  const cols = Math.floor(w / CELL), rows = Math.floor(h / CELL), ox = (w - cols * CELL) / 2 + CELL / 2, oy = (h - rows * CELL) / 2 + CELL / 2;
-  if (f >= b + 5) return { clip: null, glints: [] };
-  let d = '';
-  const glints: [number, number, number][] = [];
-  const full = CELL * 0.75;
-  for (let j = 0; j < rows; j++) {
-    for (let i = 0; i < cols; i++) {
-      const n = j * cols + i;
-      // a diagonal wave from the top left, broken up so it reads like pixels arriving
-      const at = a + (b - a) * (0.55 * ((i / cols) * 0.4 + (j / rows) * 0.6) + 0.45 * rnd(n));
-      if (f < at) continue;
-      const k = e('expo.out', f, at, 4);
-      const r = lerp(1.4, full, k), x = ox + i * CELL, y = oy + j * CELL;
-      d += `M${(x - r).toFixed(1)} ${y.toFixed(1)}a${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(2 * r).toFixed(1)} 0a${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(-2 * r).toFixed(1)} 0`;
-      if (f - at < 3) glints.push([x, y, 1 - (f - at) / 3]);
-    }
-  }
-  return { clip: d ? `path('${d}')` : 'inset(100%)', glints };
-}
+// ---------- icons (line drawings, drawn here) ----------
+export const Ico: React.FC<{ x: number; y: number; s: number; c?: string; w?: number; children: React.ReactNode }> = ({ x, y, s, c = INK, w = 2, children }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" style={{ position: 'absolute', left: x - s / 2, top: y - s / 2 }} fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+);
+export const Plus = (p: { x: number; y: number; s: number; c?: string }) => <Ico {...p}><path d="M12 5 V19 M5 12 H19" /></Ico>;
+const Sliders = (p: { x: number; y: number; s: number; c?: string }) => <Ico {...p}><path d="M4 8 H14 M18 8 H20 M4 16 H6 M10 16 H20" /><circle cx="16" cy="8" r="2" /><circle cx="8" cy="16" r="2" /></Ico>;
+export const Mic = (p: { x: number; y: number; s: number; c?: string }) => <Ico {...p}><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11 A6.5 6.5 0 0 0 18.5 11 M12 17.5 V21" /></Ico>;
+export const Up = (p: { x: number; y: number; s: number; c?: string; w?: number }) => <Ico {...p}><path d="M12 19 V5 M6 11 L12 5 L18 11" /></Ico>;
+/** A soft eight-point spark (the "working" mark), rotating. */
+export const Spark: React.FC<{ x: number; y: number; s: number; rot: number }> = ({ x, y, s, rot }) => (
+  <svg width={s} height={s} viewBox="-12 -12 24 24" style={{ position: 'absolute', left: x - s / 2, top: y - s / 2, transform: `rotate(${rot}deg)` }}>
+    {[0, 45, 90, 135].map((a) => <rect key={a} x={-1.6} y={-11} width={3.2} height={22} rx={1.6} fill={ORANGE} transform={`rotate(${a})`} />)}
+  </svg>
+);
 
-export const ChatRender: React.FC<ChatRenderProps> = ({ command, description, next, thumbnail, file = 'talking.mp4', seconds = 2.5 }) => {
+// ---------- keyboard (iOS-like, no number row) ----------
+type Key = { id: string; x: number; y: number; w: number; h: number; fn: boolean };
+const KEYS: Key[] = (() => {
+  const out: Key[] = [], kw = 91, g = 15, kh = 112, rows = [1356, 1496, 1636, 1772];
+  'qwertyuiop'.split('').forEach((k, i) => out.push({ id: k, x: 15 + i * (kw + g), y: rows[0], w: kw, h: kh, fn: false }));
+  'asdfghjkl'.split('').forEach((k, i) => out.push({ id: k, x: 68 + i * (kw + g), y: rows[1], w: kw, h: kh, fn: false }));
+  out.push({ id: 'shift', x: 15, y: rows[2], w: 135, h: kh, fn: true });
+  'zxcvbnm'.split('').forEach((k, i) => out.push({ id: k, x: 174 + i * (kw + g), y: rows[2], w: kw, h: kh, fn: false }));
+  out.push({ id: 'back', x: 930, y: rows[2], w: 135, h: kh, fn: true });
+  out.push({ id: '123', x: 93, y: rows[3], w: 199, h: kh, fn: true });
+  out.push({ id: 'space', x: 305, y: rows[3], w: 468, h: kh, fn: false });
+  out.push({ id: '/', x: 786, y: rows[3], w: 199, h: kh, fn: false });
+  return out;
+})();
+const keyId = (ch: string) => (ch === ' ' ? 'space' : ch.toLowerCase());
+
+const KeyCap: React.FC<{ k: Key }> = ({ k }) => {
+  const glyph = k.id === 'shift' ? <svg width={46} height={46} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinejoin="round"><path d="M12 4 L20 13 H15.5 V20 H8.5 V13 H4 Z" /></svg>
+    : k.id === 'back' ? <svg width={46} height={46} viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5 H20 V19 H9 L3 12 Z" /><path d="M12 9.5 L16.5 14.5 M16.5 9.5 L12 14.5" /></svg>
+      : k.id;
+  return (
+    <div style={{
+      position: 'absolute', left: k.x, top: k.y, width: k.w, height: k.h, borderRadius: 16, background: k.fn ? KEY_FN : KEY,
+      boxShadow: '0 2px 0 rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: INK,
+      fontFamily: FONT.ui, fontWeight: 400, fontSize: k.id.length > 1 ? 34 : 50,
+    }}>{glyph}</div>
+  );
+};
+/** The magnified balloon a pressed letter key shows for a few frames. */
+const Balloon: React.FC<{ k: Key; a: number }> = ({ k, a }) => {
+  const w = k.w * 1.32, h = k.h * 1.9;
+  return (
+    <div style={{
+      position: 'absolute', left: k.x + k.w / 2 - w / 2, top: k.y + k.h - h, width: w, height: h, borderRadius: 20, background: KEY_POP,
+      boxShadow: '0 10px 26px rgba(0,0,0,0.45)', display: 'flex', justifyContent: 'center', paddingTop: 18, boxSizing: 'border-box',
+      fontFamily: FONT.ui, fontSize: 78, color: INK, opacity: a, transform: `scale(${lerp(0.9, 1, a)})`, transformOrigin: '50% 100%',
+    }}>{k.id}</div>
+  );
+};
+
+// ---------- the dots tile ----------
+/** Clip path of image dots: a diagonal wave of dots that grow from specks into a mosaic, then the picture snaps in. */
+export function mosaic(w: number, h: number, f: number, a: number, b: number): string | null {
+  if (f >= b) return null;
+  const cols = Math.floor(w / CELL), rows = Math.floor(h / CELL), ox = (w - cols * CELL) / 2 + CELL / 2, oy = (h - rows * CELL) / 2 + CELL / 2;
+  let d = '';
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const n = j * cols + i, at = a + (b - a - 3) * (0.5 * ((i / cols) * 0.35 + (j / rows) * 0.65) + 0.5 * rnd(n));
+    if (f < at) continue;
+    const r = lerp(1.2, CELL * 0.62, e('expo.out', f, at, 4)), x = ox + i * CELL, y = oy + j * CELL;
+    d += `M${(x - r).toFixed(1)} ${y.toFixed(1)}a${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(2 * r).toFixed(1)} 0a${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${(-2 * r).toFixed(1)} 0`;
+  }
+  return d ? `path('${d}')` : 'inset(100%)';
+}
+/** The orange specks that twinkle on the dark tile before the picture arrives. */
+export const Specks: React.FC<{ f: number; w: number; h: number; fade: number; from?: number }> = ({ f, w, h, fade, from = 36 }) => {
+  const dots: React.ReactNode[] = [];
+  for (let n = 0; n < 320; n++) {
+    const born = from + 8 * rnd(n * 3 + 1);
+    if (f < born) continue;
+    const tw = 0.45 + 0.55 * Math.abs(Math.sin(f * 0.7 + n));
+    dots.push(<circle key={n} cx={rnd(n * 7 + 2) * w} cy={rnd(n * 11 + 5) * h} r={1.6 + 2.2 * rnd(n * 13)} fill={rnd(n * 17) > 0.25 ? ORANGE : '#f2e6dc'} opacity={tw * (1 - fade)} />);
+  }
+  return <svg width={w} height={h} style={{ position: 'absolute', inset: 0 }}>{dots}</svg>;
+};
+
+/** The chat header: a menu button, a two-tab toggle (the second tab selected) and a compose button. */
+export const ChatHeader: React.FC = () => (
+  <>
+  <div style={{ position: 'absolute', left: 54, top: 91, width: 68, height: 68, borderRadius: 34, background: '#2f2f2c' }} />
+  <Ico x={88} y={125} s={38}><path d="M5 9 H19 M5 15 H15" /></Ico>
+  <div style={{ position: 'absolute', left: 374, top: 87, width: 332, height: 76, borderRadius: 38, background: '#333230' }} />
+  <div style={{ position: 'absolute', left: 536, top: 93, width: 164, height: 64, borderRadius: 32, background: '#4a4946' }} />
+  <div style={{ position: 'absolute', left: 374, width: 166, top: 87, height: 76, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 500, color: DIM }}>Chat</div>
+  <div style={{ position: 'absolute', left: 536, width: 164, top: 87, height: 76, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 600 }}>Code</div>
+  <div style={{ position: 'absolute', left: 955, top: 91, width: 68, height: 68, borderRadius: 34, background: '#2f2f2c' }} />
+  <Ico x={989} y={125} s={36}><path d="M12 4 H6 A2 2 0 0 0 4 6 V18 A2 2 0 0 0 6 20 H18 A2 2 0 0 0 20 18 V12" /><path d="M17.5 3.5 A2.1 2.1 0 0 1 20.5 6.5 L12 15 L8.5 16 L9.5 12.5 Z" /></Ico>
+
+  </>
+);
+
+export const ChatRender: React.FC<ChatRenderProps> = ({
+  command, description, base: baseLine = 'video effects for your clips', next, thumbnail, tag = 'SPED UP', seconds = 2.4, placeholder = 'Reply to Claude...',
+}) => {
   const frame = useCurrentFrame();
   const { fps, width: W, height: H } = useVideoConfig();
-  const f = (frame / fps) * 30 * (2.5 / seconds);   // reference frame
+  const f = (frame / fps) * 30 * (2.4 / seconds);   // reference frame
   const cmd = command.startsWith('/') ? command : `/${command}`;
-  const times = typeTimes(cmd.length);
-  const typed = times.filter((t) => f >= t).length;
+  const { evs, base, arg, send } = script(cmd);
+  const cur = [...evs].reverse().find((v) => f >= v.f);
+  const text = cur?.text ?? '';
+  const baseDone = evs.some((v) => v.auto === 'base' && f >= v.f);
+  const name = arg || base.slice(1);
 
-  // the beats, in reference frames
-  const SEND = 37, MOVE = 39, TILE_IN = 50, LIGHT_A = 53, LIGHT_B = 63, GROW = 67;
-  const sent = e('power2.in', f, SEND + 2, 10);                  // keyboard and box leave: ease in, accelerate away
-  const fly = e('expo.out', f, MOVE, 13);                         // the clip lands as the sent message
-  const press = f >= SEND && f < SEND + 3 ? 1 : 0;
+  // the beats
+  const MOVE = send + 2, STATUS = send + 7, TILE_IN = send + 9, DOTS_A = TILE_IN + 2, GROW = 64;
+  const drop = e('power2.in', f, send + 1, 8);                     // keyboard leaves: ease in, accelerate away
+  const fly = e('expo.out', f, MOVE, 9);                           // the clip lands as the sent message
+  const press = f >= send && f < send + 2;
   const grow = e('power3.inOut', f, GROW, REF - GROW);
 
-  // keyboard: each key lights as it is pressed and fades over 4 frames
-  const lit: Record<string, number> = {};
-  times.forEach((t, i) => {
-    const v = f >= t ? 1 - clamp((f - t) / 4) : 0;
-    const id = keyFor(cmd[i]); if (v > (lit[id] ?? 0)) lit[id] = v;
-  });
+  // card: base command first, the effect once its letters are typed; a tap (autocomplete) flashes it
+  const phaseB = arg && f >= 15;
+  const cardOn = f >= 3 && f < send && !(f >= 12 && f < 15);
+  const cardStart = phaseB ? 15 : 3, cardK = e('expo.out', f, cardStart, 5);
+  const tapAt = phaseB ? 22 : 11, tap = f >= tapAt - 1 && f < tapAt + 1;
 
-  // the message box: open above the keyboard, then (attachment sent) it settles at the bottom
-  const boxY = lerp(BOX.open, BOX.rest, sent), boxH = lerp(BOX.h, BOX.restH, clamp((f - SEND) / 4));
-  const textY = boxY + boxH - 72 - 22 - 64;
-  const thumbIn: Rect = { x: THUMB_IN.x, y: BOX.open + 24, w: THUMB_IN.w, h: THUMB_IN.h, r: 18 };
-  const thumb = mixRect(thumbIn, { ...THUMB_OUT, r: 30 }, fly);
+  // the box: open above the keyboard, then the reply bar at the bottom
+  const box = mix({ ...BOXO, r: 30 }, { ...BOXS, r: 56 }, e('expo.out', f, send + 1, 8));
+  const boxOpen = f < send + 1;
+  const thumb = mix(THUMB_IN, THUMB_OUT, fly);
 
-  // the command card above the box
-  const cardIn = e('expo.out', f, 4, 6), cardOut = e('power2.in', f, SEND, 4);
-  const cardH = 150, cardY = BOX.open - 18 - cardH;
+  // keyboard: the last key pressed pops a balloon for 3 frames; the predictive bar quotes the word being typed
+  const pressed = evs.filter((v) => v.key && f >= v.f && f < v.f + 3).pop();
+  const word = text.split(' ').pop()!.replace(/^\//, '');
+  const showWord = cur?.key && word && cur.key !== '/';
 
-  // after the send: the pill, the status line, the tile
-  const pill = e('expo.out', f, MOVE + 6, 8), status = e('expo.out', f, MOVE + 9, 8);
-  const tileIn = e('expo.out', f, TILE_IN, 6);
-  const tileRect = mixRect({ ...TILE, r: 28 }, { x: 0, y: 0, w: W0, h: H0, r: 0 }, grow);
-  const dots = dotsPath(TILE.w, TILE.h, f, LIGHT_A, LIGHT_B);
+  const caret = f < send && Math.floor(f / 8) % 2 === 0;
+  const tileRect = mix(TILE, { x: 0, y: 0, w: W0, h: H0, r: 0 }, grow);
+  const resolved = f >= RESOLVE;
+  const clip = grow > 0 ? null : mosaic(TILE.w, TILE.h, f, DOTS_A + 3, RESOLVE);
 
-  const caret = f < SEND && (Math.floor(f / 8) % 2 === 0 || (typed > 0 && f - times[typed - 1] < 6));
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', width: W0, height: H0, transform: `scale(${W / W0}, ${H / H0})`, transformOrigin: '0 0', fontFamily: FONT.ui, color: INK }}>
-        {/* status bar and header */}
-        <div style={{ position: 'absolute', left: 64, top: 44, fontSize: 34, fontWeight: 600 }}>12:30</div>
-        <svg width={120} height={34} viewBox="0 0 120 34" style={{ position: 'absolute', right: 56, top: 46 }}>
-          {[0, 1, 2, 3].map((i) => <rect key={i} x={i * 13} y={22 - i * 6} width={8} height={10 + i * 6} rx={2} fill={INK} />)}
-          <rect x={66} y={6} width={46} height={24} rx={7} fill="none" stroke={INK} strokeWidth={2.5} opacity={0.6} />
-          <rect x={70} y={10} width={30} height={16} rx={4} fill={INK} />
-        </svg>
-        <Svg x={48} y={128} s={64}><path d="M4 7 H20 M4 12 H20 M4 17 H14" /></Svg>
-        <Svg x={W0 - 48 - 64} y={128} s={64}><path d="M12 4 H6 A2 2 0 0 0 4 6 V18 A2 2 0 0 0 6 20 H18 A2 2 0 0 0 20 18 V12" /><path d="M17.5 3.5 A2.1 2.1 0 0 1 20.5 6.5 L12 15 L8.5 16 L9.5 12.5 Z" /></Svg>
+        <ChatHeader />
 
-        {/* the sent message: pill + status line (the clip itself flies separately) */}
-        <div style={{
-          position: 'absolute', right: 48, top: THUMB_OUT.y + THUMB_OUT.h + 18, height: 62, padding: '0 28px', borderRadius: 31,
-          background: ORANGE, color: '#fff', fontFamily: FONT.mono, fontWeight: 700, fontSize: 30, display: 'flex', alignItems: 'center',
-          opacity: f >= MOVE + 6 ? clamp((f - MOVE - 6) / 2) : 0, transform: `translateY(${(1 - pill) * 24}px) scale(${lerp(1.12, 1, pill)})`, transformOrigin: '100% 50%',
-        }}>{cmd}</div>
-        <div style={{
-          position: 'absolute', left: 48, top: TILE.y - 70, height: 44, display: 'flex', alignItems: 'center', gap: 16,
-          opacity: f >= MOVE + 9 ? clamp((f - MOVE - 9) / 2) : 0, transform: `translateY(${(1 - status) * 18}px)`,
-          color: DIM, fontSize: 32, fontWeight: 500,
-        }}>
-          <div style={{ position: 'relative', width: 34, height: 34 }}><Star x={0} y={0} s={34} rot={f * 9} /></div>
-          Editing with {cmd}...
-        </div>
-
-        {/* the command card */}
-        {f >= 4 && cardOut < 1 ? (
+        {/* the sent message: the command in orange, then the status line */}
+        {f >= MOVE + 3 ? (
           <div style={{
-            position: 'absolute', left: BOX.x + 8, width: BOX.w - 16, top: cardY, height: cardH, borderRadius: 26,
-            background: '#202024', border: `1.5px solid ${LINE}`, boxShadow: '0 20px 50px rgba(0,0,0,0.55)',
-            padding: '0 34px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10,
-            opacity: clamp((f - 4) / 2) * (1 - cardOut), transform: `translateY(${(1 - cardIn) * 16 + cardOut * 22}px) scale(${lerp(1.06, 1, cardIn)})`,
-            transformOrigin: '50% 100%', filter: cardIn < 0.98 ? `blur(${(1 - cardIn) * 6}px)` : undefined,
-          }}>
-            <div style={{ fontFamily: FONT.mono, fontWeight: 700, fontSize: 38, whiteSpace: 'pre' }}>
-              <span style={{ color: INK }}>{cmd.slice(0, typed)}</span><span style={{ color: '#5d5d66' }}>{cmd.slice(typed)}</span>
-            </div>
-            <div style={{ color: DIM, fontSize: 30, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</div>
+            position: 'absolute', right: 40, top: 398, height: 68, padding: '0 22px', borderRadius: 20, background: 'rgba(255,255,255,0.035)',
+            display: 'flex', alignItems: 'center', fontSize: 42, color: ORANGE, whiteSpace: 'nowrap',
+            transform: `translateY(${(1 - e('expo.out', f, MOVE + 3, 6)) * 30}px)`, opacity: clamp((f - MOVE - 3) / 2),
+          }}>{cmd}</div>
+        ) : null}
+        {f >= STATUS ? (
+          <div style={{ position: 'absolute', left: 56, right: 54, top: 486, height: 50, opacity: clamp((f - STATUS) / 2), transform: `translateY(${(1 - e('expo.out', f, STATUS, 6)) * 18}px)` }}>
+            <Spark x={20} y={25} s={38} rot={f * 8} />
+            <div style={{ position: 'absolute', left: 60, top: 0, height: 50, display: 'flex', alignItems: 'center', fontSize: 37, color: '#ddd9d2', whiteSpace: 'nowrap' }}>Editing with {name}...</div>
+            {tag ? <div style={{ position: 'absolute', right: 0, top: 0, height: 50, display: 'flex', alignItems: 'center', fontFamily: FONT.mono, fontSize: 20, letterSpacing: 4, color: FAINT }}>{tag}</div> : null}
           </div>
         ) : null}
 
-        {/* the message box */}
-        <div style={{ position: 'absolute', left: BOX.x, width: BOX.w, top: boxY, height: boxH, borderRadius: 40, background: PANEL, border: `1.5px solid ${LINE}` }} />
-        <div style={{ position: 'absolute', left: BOX.x + 30, top: textY, height: 64, display: 'flex', alignItems: 'center', fontSize: 38 }}>
-          {typed > 0 && f < SEND ? <span style={{ whiteSpace: 'pre' }}>{cmd.slice(0, typed)}</span> : <span style={{ color: '#6c6c75' }}>Reply...</span>}
-          {caret ? <span style={{ display: 'inline-block', width: 3, height: 46, background: ORANGE, marginLeft: typed > 0 ? 4 : -2, order: typed > 0 ? 0 : -1 }} /> : null}
-        </div>
-        <div style={{ position: 'absolute', left: BOX.x + 22, top: boxY + boxH - 22 - 72, width: 72, height: 72, borderRadius: 36, border: `2px solid ${LINE}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width={36} height={36} viewBox="0 0 24 24" stroke={INK} strokeWidth={2.2} strokeLinecap="round"><path d="M12 5 V19 M5 12 H19" /></svg>
-        </div>
-        <Svg x={BOX.x + BOX.w - 22 - 72 - 24 - 52} y={boxY + boxH - 22 - 72 + 10} s={52}><rect x={9} y={3} width={6} height={11} rx={3} /><path d="M5 11 A7 7 0 0 0 19 11 M12 18 V21" /></Svg>
-        <div style={{
-          position: 'absolute', left: BOX.x + BOX.w - 22 - 72, top: boxY + boxH - 22 - 72, width: 72, height: 72, borderRadius: 36, background: ORANGE,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${press ? 0.86 : 1})`,
-        }}>
-          <svg width={38} height={38} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><path d="M12 19 V5 M6 11 L12 5 L18 11" /></svg>
-        </div>
+        {/* the command card above the box */}
+        {cardOn ? (
+          <div style={{
+            position: 'absolute', left: CARDR.x, top: CARDR.y, width: CARDR.w, height: CARDR.h, borderRadius: 22, boxSizing: 'border-box', padding: '0 34px',
+            background: tap ? CARD_HI : CARD, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6,
+            transform: `translateY(${(1 - cardK) * 22}px)`, opacity: clamp((f - cardStart) / 2),
+          }}>
+            <div style={{ fontSize: 42, fontWeight: 700, whiteSpace: 'nowrap' }}>{phaseB ? arg : base}</div>
+            <div style={{ fontSize: 29, color: DIM, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{phaseB ? description : baseLine}</div>
+          </div>
+        ) : null}
 
-        {/* the attached clip: in the box, then the sent message */}
-        <Fit r={thumb} W={W} H={H} style={{ boxShadow: fly > 0 ? `0 18px 40px rgba(0,0,0,${0.5 * fly})` : undefined, border: `1.5px solid ${LINE}` }}>{thumbnail}</Fit>
-        <div style={{ position: 'absolute', left: thumb.x + 8, top: thumb.y + thumb.h - 34, fontSize: 17, fontWeight: 600, color: '#fff', opacity: 1 - clamp(fly * 3), textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}>{file}</div>
-        {fly < 0.3 ? (
-          <div style={{ position: 'absolute', left: thumb.x + thumb.w - 30, top: thumb.y - 10, width: 40, height: 40, borderRadius: 20, background: '#2c2c31', border: `2px solid ${BG}`, opacity: 1 - clamp(fly * 4), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width={18} height={18} viewBox="0 0 24 24" stroke={INK} strokeWidth={3} strokeLinecap="round"><path d="M6 6 L18 18 M18 6 L6 18" /></svg>
+        {/* the message box (then the reply bar) */}
+        <div style={{ position: 'absolute', left: box.x, top: box.y, width: box.w, height: box.h, borderRadius: box.r, background: BOX, border: `1.5px solid ${LINE}` }} />
+        {boxOpen ? (
+          <>
+            <div style={{ position: 'absolute', left: 60, top: 1024, height: 64, display: 'flex', alignItems: 'center', fontSize: 46, whiteSpace: 'pre' }}>
+              {text ? (baseDone
+                ? <><span style={{ color: ORANGE }}>{base}</span><span>{text.slice(base.length)}</span></>
+                : <span>{text}</span>) : null}
+              {caret ? <span style={{ display: 'inline-block', width: 3, height: 50, background: INK, marginLeft: 2 }} /> : null}
+              {!text ? <span style={{ color: FAINT }}>{placeholder}</span> : null}
+            </div>
+            <Plus x={80} y={1151} s={40} c={DIM} />
+            <Sliders x={155} y={1151} s={40} c={DIM} />
+            <Mic x={886} y={1151} s={40} c={DIM} />
+            <div style={{ position: 'absolute', left: 935, top: 1108, width: 86, height: 86, borderRadius: 20, background: ORANGE, transform: `scale(${press ? 0.88 : 1})` }} />
+            <Up x={978} y={1151} s={44} c="#fff" />
+          </>
+        ) : (
+          <div style={{ opacity: clamp((f - send - 4) / 3) }}>
+            <Plus x={92} y={1823} s={38} c={DIM} />
+            <div style={{ position: 'absolute', left: 132, top: 1795, height: 56, display: 'flex', alignItems: 'center', fontSize: 40, color: FAINT }}>{placeholder}</div>
+            <Mic x={918} y={1823} s={38} c={DIM} />
+            <div style={{ position: 'absolute', left: 961, top: 1786, width: 74, height: 74, borderRadius: 37, background: '#3c3b38' }} />
+            <Up x={998} y={1823} s={38} c="#8d8b86" />
+          </div>
+        )}
+
+        {/* the attached clip: in the box with an x badge, then the sent message */}
+        <Fit r={thumb} W={W} H={H} style={{ boxShadow: fly > 0 ? `0 14px 34px rgba(0,0,0,${0.45 * fly})` : undefined }}>{thumbnail}</Fit>
+        {fly < 0.25 ? (
+          <div style={{ position: 'absolute', left: thumb.x + thumb.w - 26, top: thumb.y - 8, width: 34, height: 34, borderRadius: 17, background: '#f3f0ea', opacity: 1 - clamp(fly * 5), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width={16} height={16} viewBox="0 0 24 24" stroke="#262624" strokeWidth={3.4} strokeLinecap="round"><path d="M6 6 L18 18 M18 6 L6 18" /></svg>
           </div>
         ) : null}
 
         {/* the keyboard */}
-        <div style={{ position: 'absolute', left: 0, top: 0, width: W0, height: H0, transform: `translateY(${sent * (KB_H + 20)}px)` }}>
-          <div style={{ position: 'absolute', left: 0, top: KB_Y, width: W0, height: KB_H, background: KBD, borderTop: `1px solid ${LINE}` }} />
-          {KEYS.map((k) => <KeyCap key={k.id} k={k} lit={lit[k.id] ?? 0} />)}
-          <div style={{ position: 'absolute', left: W0 / 2 - 70, top: H0 - 22, width: 140, height: 8, borderRadius: 4, background: '#55555c' }} />
+        <div style={{ position: 'absolute', left: 0, top: 0, width: W0, height: H0, transform: `translateY(${drop * (H0 - KB_Y + 30)}px)` }}>
+          <div style={{ position: 'absolute', left: 0, top: KB_Y, width: W0, height: H0 - KB_Y, background: KBD }} />
+          <div style={{ position: 'absolute', left: 0, top: KB_Y, width: W0, height: 92, background: BAR }} />
+          {showWord ? <div style={{ position: 'absolute', left: 150, top: KB_Y, height: 92, display: 'flex', alignItems: 'center', fontSize: 34, color: INK }}>&ldquo;{word}&rdquo;</div> : null}
+          {KEYS.map((k) => <KeyCap key={k.id} k={k} />)}
+          {pressed ? (() => { const k = KEYS.find((q) => q.id === keyId(pressed.key!) && /^[a-z]$/.test(q.id)); return k ? <Balloon k={k} a={1 - clamp((f - pressed.f - 2) / 1)} /> : null; })() : null}
         </div>
 
-        {/* the tile: dots light up into the first frame of what follows, then it grows to fill the screen */}
+        {/* the tile: orange specks, then a mosaic of the picture, then the picture; it plays, then grows to fill the screen */}
         {f >= TILE_IN ? (
           <div style={{
             position: 'absolute', left: tileRect.x, top: tileRect.y, width: tileRect.w, height: tileRect.h, borderRadius: tileRect.r, overflow: 'hidden',
-            background: '#141417', border: grow < 0.98 ? `1.5px solid ${LINE}` : undefined,
-            opacity: clamp((f - TILE_IN) / 2), transform: grow > 0 ? undefined : `scale(${lerp(1.14, 1, tileIn)})`, transformOrigin: '0 0',
+            background: TILE_BG, opacity: clamp((f - TILE_IN) / 2), transform: grow > 0 ? undefined : `scale(${lerp(1.06, 1, e('expo.out', f, TILE_IN, 5))})`, transformOrigin: '0 0',
           }}>
-            {grow <= 0 ? <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.2) 1.5px, rgba(0,0,0,0) 2.2px)', backgroundSize: `${CELL}px ${CELL}px`, backgroundPosition: `${((TILE.w % CELL) / 2).toFixed(1)}px ${((TILE.h % CELL) / 2).toFixed(1)}px` }} /> : null}
-            {f >= LIGHT_A ? (
-              <div style={{ position: 'absolute', inset: 0, clipPath: grow > 0 ? undefined : (dots.clip ?? undefined) }}>
+            {!resolved ? <Specks f={f} w={TILE.w} h={TILE.h} fade={clamp((f - (RESOLVE - 4)) / 4)} from={TILE_IN} /> : null}
+            {f >= DOTS_A + 3 ? (
+              <div style={{ position: 'absolute', inset: 0, clipPath: clip ?? undefined }}>
                 <Fit r={{ x: 0, y: 0, w: tileRect.w, h: tileRect.h, r: 0 }} W={W} H={H}>{next}</Fit>
               </div>
-            ) : null}
-            {dots.glints.length && grow <= 0 ? (
-              <svg width={TILE.w} height={TILE.h} style={{ position: 'absolute', inset: 0 }}>
-                {dots.glints.map(([x, y, a], i) => <circle key={i} cx={x} cy={y} r={CELL * 0.42} fill={`rgba(255,255,255,${(0.55 * a).toFixed(2)})`} />)}
-              </svg>
             ) : null}
           </div>
         ) : null}

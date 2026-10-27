@@ -146,24 +146,37 @@ captions, `window-cards`, `tier-list` and chin props share the band under the ch
 captions want a darker wall; on a light wall pass `color` (or use `style: podcast` with `color: "#ffffff"`). Put camera effects
 first in the plan; don't stack a full-width word with a big push.
 
-## Intro: ChatRender
-A ~2.5 s intro that can open any render. It shows a dark phone chat with the clip attached in the message box. A command is
-typed key by key on the keyboard, under a card that shows its name and one-line description. On send, the clip flies up as the
-sent message, with the command in an orange pill and "Editing with /command..." beside a spinning star. A tile of tiny dots
-then lights up into the film's first frame, grows to fill the screen, and the film cuts to it.
+## Intro: ChatRender, and the Outro
+**ChatRender** (~2.4 s) opens any render with the chat beat of the studied "36 effects" reel (`references/instagram/De7JFJdo4KX.mp4`,
+local only): a warm dark chat (menu, a Chat / Code toggle, compose), the clip attached in the "Reply to Claude..." box. "/"
+opens a command card, "e" is typed and the card tapped to autocomplete `/effects`, two letters of the effect are typed and
+tapped to complete it; the command turns orange once recognised; letter keys pop a magnified balloon and the predictive bar
+quotes the word. Send: the keyboard drops, the clip and the orange command go up as the sent message, "Editing with
+<effect>..." spins beside a small `SPED UP` tag, and a big 9:16 tile of orange specks fills into a mosaic that resolves into
+the clip. The clip **plays inside the tile** from that frame on, the tile grows to fill the screen, and the film carries on
+from there (nothing plays twice).
 ```json
-{"intro": {"command": "/glass-graph", "description": "A glass card with a graph that climbs"},
- "effects": [{"fx": "glass-graph", "start": 0.5, "end": 3.5}]}
+{"intro": {"command": "/effects kallaway-split", "description": "your numbers rise as a chart above you"},
+ "effects": [{"fx": "kallaway-split", "start": 0.2, "end": 4.2}]}
 ```
-- `intro` takes `command`, `description`, `file` (the attachment's name, `talking.mp4`) and `seconds` (2.5; every beat
-  stretches to match). Leave out `command` / `description` and they come from the first effect; `"intro": true` or
-  `fcm render ... --intro` turns it on with those defaults.
-- With an intro, `--range 0.5-3.9` picks the part of the clip that follows it. Start the range where the first effect starts:
-  the tile resolves into that frame and the cut lands on it. `fcm check` adds stills of the intro's beats (`--still i1.2` is
-  1.2 s into the intro).
-- The component is `remotion/src/intro/ChatRender.tsx` (props: `command`, `description`, `next`, `thumbnail`, `file`,
-  `seconds`); `remotion/src/Film.tsx` plays it before the clip. Example: `examples/chat-render.json`, demo `demo/chat-render.mp4`.
-- Its message box and keyboard sit in the bottom platform zone (1536-1920) by design: it is a phone screen, not an overlay.
+- `intro` takes `command` (default `/effects <first effect>`), `description` (the effect's card line), `base` (the
+  `/effects` card line, default "N video effects for your clips"), `tag` (`SPED UP`, `""` for none), `placeholder` and
+  `seconds` (2.4; every beat stretches to match). `"intro": true` or `fcm render ... --intro` uses the defaults.
+- With an intro, `--range 0.2-4.4` picks the part of the clip that follows it; start it where the first effect starts.
+  `fcm check` adds stills of the intro's beats (`i0.6` is 0.6 s into the intro).
+- Its message box and keyboard sit in the bottom platform zone by design: it is a phone screen, not an overlay.
+
+**Outro** (~4.4 s) ends a reel on the comment keyword: the viewer's comment ("claude") is the sent message, Claude answers
+word by word ("Comment “claude” and I'll send you all N effects"), a dot tile resolves into a grid of every effect segment
+playing, which fills the screen under a "Comment “claude”" headline with an orange "to get all N effects" pill; a comment box
+then types the keyword and posts it, and a heart lands. A plan with `"outro"` renders it:
+```json
+{"outro": {"segments": ["1_kallaway-split.mp4", "..."], "labels": ["kallaway-split", "..."], "keyword": "claude", "count": 22, "skip": 60}}
+```
+`segments` are rendered effect MP4s (paths relative to the plan), `skip` the frames to skip into each (its chat intro), `count`
+what the DM really sends. A full reel = one render per effect with its intro, then the outro, joined with hard cuts
+(`ffmpeg -f concat`); see `examples/reel/run.sh`. Components: `remotion/src/intro/ChatRender.tsx`, `remotion/src/intro/Outro.tsx`,
+`remotion/src/Film.tsx`.
 
 ## Rules (read `docs/director.md` and `docs/motion-rules.md` before changing or adding an effect)
 - **Never cover the face.** Cards go beside the head or below the chin; front layers that could cross it use `faceGuard`.

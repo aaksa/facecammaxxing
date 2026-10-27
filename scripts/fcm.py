@@ -52,6 +52,7 @@ def effects():
 
 def load_plan(path, job):
     plan = json.load(open(path))
+    if isinstance(plan, dict) and plan.get('outro'): return []        # the comment-keyword ending has no effects
     items = plan.get('effects', plan) if isinstance(plan, dict) else plan
     fx, al = effects()
     dur = json.load(open(os.path.join(job, 'track.json')))['duration']
@@ -121,7 +122,7 @@ def main():
         shutil.rmtree(out, ignore_errors=True)
         raw = json.load(open(plan))
         if '--intro' in rest or (isinstance(raw, dict) and raw.get('intro')):   # the intro's beats: typing, sent, dots, grow
-            at = ','.join(['i0.45', 'i1.05', 'i1.45', 'i1.95', 'i2.3'] + at.split(','))
+            at = ','.join(['i0.12', 'i0.3', 'i0.6', 'i1.02', 'i1.3', 'i1.6', 'i2.25'] + at.split(','))
         render(['--job', job, '--plan', plan, '--still', at, '--out-dir', out] + (['--intro'] if '--intro' in rest else []))
         order = lambda p: (lambda n: (0, float(n[6:])) if n.startswith('intro_') else (1, float(n)))(os.path.basename(p)[:-4])
         pngs = sorted(glob.glob(os.path.join(out, '*.png')), key=order)

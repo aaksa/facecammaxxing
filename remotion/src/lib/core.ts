@@ -11,7 +11,7 @@ export type Track = {
 };
 export type FxSpec = { fx: string; start: number; end: number } & Record<string, unknown>;
 /** The ChatRender intro: the command typed, its one-line description, the attachment's name, its length. */
-export type IntroSpec = { command?: string; description?: string; file?: string; seconds?: number };
+export type IntroSpec = { command?: string; description?: string; base?: string; file?: string; seconds?: number; tag?: string; placeholder?: string };
 export type Props = {
   track: Track; effects: FxSpec[]; cards: string[]; hasRoom: boolean;
   intro?: IntroSpec | null;                    // play ChatRender first, then cut to the clip

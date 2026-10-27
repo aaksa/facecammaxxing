@@ -1,0 +1,15 @@
+{
+ "intro": {
+  "command": "/effects backdrop-word",
+  "description": "a giant word drops in behind you",
+  "seconds": 2.175
+ },
+ "effects": [
+  {
+   "fx": "backdrop-word",
+   "start": 2.0,
+   "end": 3.634,
+   "text": "CLAUDE"
+  }
+ ]
+}

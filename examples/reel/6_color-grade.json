@@ -1,0 +1,14 @@
+{
+ "intro": {
+  "command": "/effects color-grade",
+  "description": "flat footage wiped into a cinematic grade",
+  "seconds": 2.175
+ },
+ "effects": [
+  {
+   "fx": "color-grade",
+   "start": 3.0,
+   "end": 4.634
+  }
+ ]
+}

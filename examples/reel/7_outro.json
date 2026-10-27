@@ -1,0 +1,32 @@
+{
+ "outro": {
+  "segments": [
+   "1_kallaway-split.mp4",
+   "2_over-the-shoulder.mp4",
+   "3_backdrop-word.mp4",
+   "4_glass-widgets.mp4",
+   "5_spotlight.mp4",
+   "6_color-grade.mp4"
+  ],
+  "labels": [
+   "kallaway-split",
+   "over-the-shoulder",
+   "backdrop-word",
+   "glass-widgets",
+   "spotlight",
+   "color-grade"
+  ],
+  "keyword": "claude",
+  "count": 22,
+  "seconds": 4.17,
+  "skips": [
+   73,
+   66,
+   66,
+   66,
+   66,
+   66
+  ],
+  "tail": 2
+ }
+}

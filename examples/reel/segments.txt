@@ -1,0 +1,6 @@
+1_kallaway-split 0.2 1.901
+2_over-the-shoulder 0.6 2.234
+3_backdrop-word 2.0 3.634
+4_glass-widgets 3.2 4.834
+5_spotlight 1.2 2.834
+6_color-grade 3.0 4.634
